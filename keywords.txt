@@ -1,0 +1,6 @@
+PTState	KEYWORD1
+getState	KEYWORD2
+stateName	KEYWORD2
+menuOk	KEYWORD2
+menuCancel	KEYWORD2
+nextState	KEYWORD2
