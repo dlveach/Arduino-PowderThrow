@@ -32,10 +32,10 @@ class PTState
       pt_locked,
       pt_menu,
       pt_cfg,
-      pt_cfg_bump,
-      pt_cfg_dec_lim,
-      pt_cfg_dec_tgt,
-      pt_cfg_fcurve,
+      pt_cfg_bump,  //TODO: not used?
+      pt_cfg_dec_lim,  //TODO: not used?
+      pt_cfg_dec_tgt,  //TODO: not used?
+      pt_cfg_fcurve,  //TODO: not used?
       pt_man,
       pt_man_throw,
       pt_man_trickle,

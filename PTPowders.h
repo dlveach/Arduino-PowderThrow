@@ -17,7 +17,7 @@
 //0 base, 25 powders
 #define MAX_POWDERS 24
 #define POWDERS_ADDR_BASE   PRESETS_ADDR_BASE + (PRESET_DATA_SIZE * MAX_PRESETS)
-#define POWDER_NAME_LEN 16
+#define POWDER_NAME_LEN 16  //TODO: consider consolidating to a common NAME_LEN
 #define MAX_POWDER_FACTOR 0.2
 
 /*

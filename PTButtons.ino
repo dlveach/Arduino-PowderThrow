@@ -75,9 +75,12 @@ void pauseForAnyButton()
 /*
  * Handle a button pressed based on the MCP pin number
  * the button is on.
+ * 
+ * TODO: condider moving button logic into the associated objects, esp config?
  */
 void handleButton(int btn)
 {  
+  static bool _regen_fcurve = false;  //flag to trigger Fcurve regen if parameters changed in config.
   switch (g_state.getState())
   {
     case g_state.pt_menu:
@@ -87,6 +90,14 @@ void handleButton(int btn)
           if (g_presets.isDefined() && g_powders.isPowderDefined())
           {
             g_scale.setTarget(g_presets.getPresetChargeWeight());
+            char buff[NAME_LEN];
+            buff[0] = 0x00;
+            g_presets.getPresetName(buff);
+            g_config.setPresetName(buff);
+            buff[0] = 0x00;
+            g_powders.getPowderName(buff);
+            g_config.setPowderName(buff);
+            g_config.setKernelFactor(g_powders.getPowderFactor());
             g_state.setState(g_state.pt_ready);
           }
           else
@@ -176,6 +187,7 @@ void handleButton(int btn)
                 if ((g_config.getFcurveP() + FCURVEP_INC) <= FCURVEP_INC_LIMIT)
                 {
                   g_config.setFcurveP(g_config.getFcurveP() + FCURVEP_INC);
+                  _regen_fcurve = true;
                 }
                 break;
               default:
@@ -216,6 +228,7 @@ void handleButton(int btn)
                 if ((g_config.getFcurveP() - FCURVEP_INC) >= FCURVEP_DEC_LIMIT)
                 {
                   g_config.setFcurveP(g_config.getFcurveP() - FCURVEP_INC);
+                  _regen_fcurve = true;
                 }
                 break;
               default:
@@ -230,7 +243,15 @@ void handleButton(int btn)
           }
           break;
         case BTN_OK:
-          if (g_config.isDirty()) { g_config.saveConfig(); }
+          if (g_config.isDirty()) 
+          { 
+            g_config.saveConfig(); 
+            if (_regen_fcurve == true) 
+            { 
+              util_setFscaleCurve(g_curve_map, g_config.getFcurveP()); 
+              _regen_fcurve = false;
+            }
+          }
           g_disp_edit = !g_disp_edit; 
           break;
       }      
@@ -247,13 +268,13 @@ void handleButton(int btn)
           switch (g_cur_line)
           {
             case 0:
-              DEBUGLN(F("TODO: force bump mode"));
+              DEBUGLN(F("TODO: force a bump?"));
               break;
             case 1:
-              DEBUGLN(F("TODO: run thrower"));
+              manualThrow();
               break;
             case 2:
-              DEBUGLN(F("TODO: toggle trickler on/off"));
+              toggleTrickler();
               break;
           }
           break;

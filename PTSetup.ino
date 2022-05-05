@@ -1,3 +1,10 @@
+  #define SERIAL_ENABLED    F("Serial enabled")
+  #define MCP_I2C_ERROR     F("MCP I2C comm err") 
+  #define MCP_I2C_ENABLED   F("MCP I2C Enabled")
+  #define FRAM_I2C_ENABLED  F("FRAM I2C Enabled")
+  #define FRAM_I2C_ERROR    F("FRAM I2C comm err")
+  #define LCD_I2C_ENABLED   F("LCD I2C Enabled")
+  #define LCD_I2C_ERROR     F("LCD I2C comm err: ")
 /*
  * Setup.ino  Arduino setup()
  */
@@ -60,6 +67,9 @@ void setup() {
   g_mcp.setupInterruptPin(BTN_DOWN, LOW);
   pinMode(INT_PIN, INPUT);  // configure nano pin for MCP interrupt
   delay(1000);
+  g_mcp.getLastInterruptPin();  //clear it just in case
+  delay(10);
+  g_mcp.getLastInterruptPin();  //be really sure!!!
 
   // Initialize FRAM
   Adafruit_FRAM_I2C fram = Adafruit_FRAM_I2C();
@@ -120,13 +130,76 @@ void setup() {
   DEBUGP(F("Size of each powder: "));
   DEBUGLN(POWDER_DATA_SIZE);
   delay (1000);
-    
-  // Enable motor drives
-  g_tic1.setTargetVelocity(0);
-  g_tic2.setTargetVelocity(0);
-  g_tic1.exitSafeStart();
-  g_tic2.exitSafeStart();
-  DEBUGLN(TIC_I2C_ENABLED);
+
+  //Set copied data in config from presets and powders
+  char buff[NAME_LEN];
+  buff[0] = 0x00;
+  g_presets.getPresetName(buff);
+  g_config.setPresetName(buff);
+  buff[0] = 0x00;
+  g_powders.getPowderName(buff);
+  g_config.setPowderName(buff);
+  g_config.setKernelFactor(g_powders.getPowderFactor());
+  
+  // Enable and configure TIC stepper motor drivers
+  g_TIC_thrower.setProduct(TicProduct::T500);
+  g_TIC_thrower.setStepMode(TIC_STEP_MODE);  
+  g_TIC_thrower.setCurrentLimit(TIC_THROWER_CURRENT_LIMIT);  
+  g_TIC_thrower.setMaxAccel(TIC_THROWER_MAX_ACCEL);
+  g_TIC_thrower.setMaxDecel(TIC_THROWER_MAX_DECEL);
+  g_TIC_thrower.setMaxSpeed(MAX_THROWER_SPEED * TIC_PULSE_MULTIPLIER);
+  g_TIC_trickler.setProduct(TicProduct::T500);
+  g_TIC_trickler.setStepMode(TIC_STEP_MODE);
+  g_TIC_trickler.setCurrentLimit(TIC_TRICKLER_CURRENT_LIMIT);
+  g_TIC_trickler.setStartingSpeed(TIC_TRICKLER_STARTING_SPEED);
+  g_TIC_trickler.setMaxAccel(TIC_TRICKLER_MAX_ACCEL);
+  g_TIC_trickler.setMaxDecel(TIC_TRICKLER_MAX_DECEL);
+  g_TIC_trickler.setMaxSpeed(MAX_TRICKLER_SPEED * TIC_PULSE_MULTIPLIER);
+#ifdef DEBUG_SERIAL
+  DEBUGP(F("TIC step mode = "));
+  switch (g_TIC_trickler.getStepMode())
+  {
+    case TicStepMode::Microstep1:
+      DEBUGLN(F("Full step"));
+      break;
+    case TicStepMode::Microstep2:
+      DEBUGLN(F("Half step"));
+      break;
+    case TicStepMode::Microstep4:
+      DEBUGLN(F("1/4 step"));
+      break;
+    case TicStepMode::Microstep8:
+      DEBUGLN(F("1/8th step"));
+      break;
+    default:
+      DEBUGLN(F("Invalid value for TIC 500."));
+  }
+  DEBUGP(F("Thrower TIC current limit = "));
+  DEBUGLN(g_TIC_thrower.getCurrentLimit());
+  DEBUGP(F("Thrower TIC Max Speed = "));
+  DEBUGLN(g_TIC_thrower.getMaxSpeed());
+  DEBUGP(F("Thrower TIC Start Speed = "));
+  DEBUGLN(g_TIC_thrower.getStartingSpeed());
+  DEBUGP(F("Thrower TIC Max Accel = "));
+  DEBUGLN(g_TIC_thrower.getMaxAccel());
+  DEBUGP(F("Thrower TIC Max Decel = "));
+  DEBUGLN(g_TIC_thrower.getMaxDecel());
+  DEBUGP(F("Trickler TIC current limit = "));
+  DEBUGLN(g_TIC_trickler.getCurrentLimit());
+  DEBUGP(F("Trickler TIC Max Speed = "));
+  DEBUGLN(g_TIC_trickler.getMaxSpeed());
+  DEBUGP(F("Trickler TIC Start Speed = "));
+  DEBUGLN(g_TIC_trickler.getStartingSpeed());
+  DEBUGP(F("Trickler TIC Max Accel = "));
+  DEBUGLN(g_TIC_trickler.getMaxAccel());
+  DEBUGP(F("Trickler TIC Max Decel = "));
+  DEBUGLN(g_TIC_trickler.getMaxDecel());
+#endif
+  g_TIC_trickler.setTargetVelocity(0);
+  g_TIC_thrower.setTargetVelocity(0);
+  g_TIC_trickler.exitSafeStart();
+  g_TIC_thrower.exitSafeStart();
+  DEBUGLN(F("TIC I2C drivers enabled"));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Step Drvrs enbld ..."));
   delay (1000);
@@ -139,7 +212,21 @@ void setup() {
     g_lcd.print(F("Scale connected.    "));
     delay (1000);  
     calibrateScale();
-    calibrateTrickler();  //move this to the Manual Operation menu?
+    //calibrateTrickler();  //TODO: move this to the Manual Operation menu?
+    setThrowerHome();
+    delay(10);
+    g_scale.checkScale(); //update scale state
+    g_lcd.setCursor(0,2);
+    g_lcd.print(F("Scale calibrated.   "));
+    g_lcd.setCursor(0,3);
+    g_lcd.print(F("                    "));  
+    delay (10);
+    //DEBUG
+    DEBUGP(F("Pan Off weight = "));
+    DEBUGLN(g_scale.getOffScaleWeight());    
+    DEBUGP(F("Scale cond: "));
+    DEBUGLN(g_scale.getCondition());
+    delay (1000);
   }
   else
   {
@@ -156,17 +243,16 @@ void setup() {
   util_setFscaleCurve(g_curve_map, g_config.getFcurveP());
   g_lcd.setCursor(0,2);
   g_lcd.print(F("FCurve generated ..."));
-  //dumpFCurve(); // Uncomment to debug
  
   delay(1000);
   g_state.setState(PTState::pt_menu);
   g_display_changed = true;
   displayUpdate();
   g_mcp.getLastInterruptPin();  //clear it just in case
-  //g_last_loop_time = millis();
 }
 
 /*
+ * During setup.
  * Calibrate the scale for pan on and pan off.
  */
 void calibrateScale()
@@ -177,29 +263,23 @@ void calibrateScale()
   g_lcd.setCursor(0,3);
   g_lcd.print(F("Press any button ..."));
   pauseForAnyButton();
-  g_lcd.print(F("                    "));
-  g_scale.zeroScale();
-  
+  g_scale.zeroScale();  
   // Pan off scale
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Take pan off scale, "));
   g_lcd.setCursor(0,3);
   g_lcd.print(F("Press any button ..."));
   pauseForAnyButton();
+  DEBUGP(F("Scale pan off, weight ="));
+  DEBUGLN(g_scale.getWeight());
   g_scale.setOffScaleWeight();
-
-  g_lcd.setCursor(0,2);
-  g_lcd.print(F("Scale calibrated,   "));
-  g_lcd.setCursor(0,3);
-  g_lcd.print(F("Press any button ..."));
-  pauseForAnyButton();
-  g_lcd.setCursor(0,3);
-  g_lcd.print(F("                    "));
-  //TODO: set a state?
+  DEBUGP("After setting pan_off_scale_weight: ");
+  DEBUGLN(g_scale.getOffScaleWeight());
 }
 
 /*
- * 
+ * During setup.  (Move to manual?)
+ * TODO: impliment
  */
 void calibrateTrickler()
 {
@@ -209,7 +289,37 @@ void calibrateTrickler()
   g_lcd.setCursor(0,3);
   g_lcd.print(F("Press any button ..."));
   pauseForAnyButton();
+ }
+
+/*
+ * During setup, 
+ * DeEnergize setpper, have user manually move thrower to 
+ * home pos and set in thrower controller.  Engergize stepper.
+ */
+ void setThrowerHome()
+ {
+  DEBUGLN(F("Calibrating thrower home"));
+  if (g_TIC_thrower.getEnergized())
+  {
+    g_TIC_thrower.deenergize();
+  }
+  delay(100);
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("Move thrower home   "));
   g_lcd.setCursor(0,3);
-  g_lcd.print(F("                    "));
-  //TODO: set a state?
+  g_lcd.print(F("Press any button ..."));
+  pauseForAnyButton();
+  g_TIC_thrower.energize();
+  delay(100);
+  g_TIC_thrower.haltAndSetPosition(0); //set home position
+  g_thrower_top_pos = 0;
+  g_thrower_bottom_pos = THROWER_TRAVEL_DISTANCE; 
+  g_TIC_thrower.exitSafeStart(); //clear safe start after deenergize
+  //TODO: set a state to indicate calibrated?
+  //TODO: is tic.getPositionUncertain() enough?
+  DEBUGLN(F("Thrower home pos = 0"));
+  DEBUGP(F("Thrower current pos = "));
+  DEBUGLN(g_TIC_thrower.getCurrentPosition());
+  DEBUGP(F("Thrower bottom pos = "));
+  DEBUGLN(g_thrower_bottom_pos);
  }

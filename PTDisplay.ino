@@ -1,4 +1,12 @@
 
+//TODO: MAJOR BUG: reading FRAM in every display update!!!
+//  Fix:  get powder name (and preset name?) from internal buffers. 
+//        DO NOT reload buffer every time.
+//        Only load buffer when necessary (selecting a new preset
+//        or powder in a preset).  The buffers should stay current
+//        for all future display updates.  Obviously buffers change
+//        when saving preset or powder but same applies.
+
 /*
  * 
  */
@@ -6,7 +14,8 @@ void displayUpdate()
 {
 //                        12345678901234567890
   static char buff[21] = "                    ";
-  
+  static bool _clear_disp = true; //static flag to avoid clear on every state update
+
   if (!g_display_changed) return;
   g_display_changed = false;
   switch (g_state.getState())
@@ -16,56 +25,65 @@ void displayUpdate()
     case g_state.pt_error:
     case g_state.pt_cal_scale:
     case g_state.pt_cal_trickler:
+      _clear_disp = true;
       //Direct display output states. Nothing to do here.  Generally shouldn't happen.
+      DEBUGP(F("WARN: "));
       DEBUGP(g_state.getStateName());
       DEBUGLN(F(" is a direct output state, no display update."));
       return;
     case g_state.pt_ready:
-      g_lcd.clear();
-      switch(g_scale.getCondition())
+    case g_state.pt_throwing:
+    case g_state.pt_trickling:
+    case g_state.pt_bumping:
+    case g_state.pt_paused:
+    case g_state.pt_locked:
+      if (_clear_disp) { g_lcd.clear(); }
+      g_lcd.noCursor();
+      g_lcd.setCursor(0,0);
+      if (g_scale.isConnected())
       {
-        case PTScale::undef:
-          sprintf(buff, "Pre: %02d  No Scale ", g_config.getPreset()+1);
-          break;
-        case PTScale::zero:
-          sprintf(buff, "Pre: %02d  Sys Ready", g_config.getPreset()+1);
-          break;
-        case PTScale::pan_off:
-          sprintf(buff, "Pre: %02d  Pan Off  ", g_config.getPreset()+1);
-          break;
-        case PTScale::under_tgt:
-          sprintf(buff, "Pre: %02d  Under tgt", g_config.getPreset()+1);
-          break;
-        case PTScale::close_to_tgt:
-          sprintf(buff, "Pre: %02d  Close tgt", g_config.getPreset()+1);
-          break;
-        case PTScale::on_tgt:
-          sprintf(buff, "Pre: %02d  On Target", g_config.getPreset()+1);
-          break;
-        case PTScale::over_tgt:
-          sprintf(buff, "Pre: %02d  OVERTHROW", g_config.getPreset()+1);
-          break;
-        default:
-          sprintf(buff, "Pre: %02d  Unkn cond", g_config.getPreset()+1);
-          break;
+        sprintf(buff, "%-10s %-9s", g_state.getStateName(), g_scale.getConditionName());
+      }
+      else
+      {
+        sprintf(buff, "%-10s No Scale ", g_state.getStateName());
       }
       g_lcd.print(buff);
-      g_lcd.setCursor(0,1);
-      g_presets.getPresetName(buff);
-      buff[10]=0x00;
-      g_lcd.print(buff);
-      g_powders.loadPowder(g_presets.getPowderIndex());
-      g_powders.getPowderName(buff);
-      buff[9]=0x00;
-      g_lcd.setCursor(11,1);
-      g_lcd.print(buff);
-      g_lcd.setCursor(0,2);
-      g_presets.loadPreset(g_config.getPreset());
-      sprintf(buff, "T:%6.2fgn D:%6.2f ", g_scale.getTarget(), g_scale.getDelta());
+      if (_clear_disp)
+      {
+        g_lcd.setCursor(0,1);
+        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());
+        g_lcd.print(buff);
+      }
+      if (_clear_disp)
+      {
+        g_lcd.setCursor(0,2);
+        sprintf(buff, "T:%6.2fgn  D:%6.2f ", g_scale.getTarget(), g_scale.getDelta());
+      }
+      else //TODO: fix this, must display negative delta and kernels
+      {
+        g_lcd.setCursor(14,2);
+        if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef))
+        {
+          sprintf(buff, "%s", "--.-- ");
+        }
+        else
+        {
+          sprintf(buff, "%-6.2f", g_scale.getDelta());
+        }
+      }
       g_lcd.print(buff);
       g_lcd.setCursor(0,3);
-      sprintf(buff, "C:%6.2fgn K:%6.1f ", g_scale.getWeight(), g_scale.getKernels());
+        if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef))
+      {
+        sprintf(buff, "C:%6.2fgn K:--.-- ", g_scale.getWeight());          
+      }
+      else
+      {
+        sprintf(buff, "C:%6.2fgn K:%6.2f ", g_scale.getWeight(), g_scale.getKernels());
+      }
       g_lcd.print(buff);
+      _clear_disp = false;
       break;
     case g_state.pt_menu:
       g_lcd.clear();
@@ -78,6 +96,7 @@ void displayUpdate()
       g_lcd.print(F("  Powders           "));
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));
+      _clear_disp = true;
       break;
     case g_state.pt_man:
       g_lcd.clear();
@@ -90,6 +109,7 @@ void displayUpdate()
       g_lcd.print(F("  Home Thrower      "));
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));
+      _clear_disp = true;
       break;
     case g_state.pt_cfg:
       g_lcd.clear();
@@ -113,22 +133,27 @@ void displayUpdate()
       {
         g_lcd.print(F(">>"));
       }
+      _clear_disp = true;
       break;
     case g_state.pt_cfg_bump:
       g_lcd.clear();
-      g_lcd.print(F("TODO: Bmpthrsh disp "));
+      g_lcd.print(F("TODO: Bmpthrsh disp "));  //TODO: used?
+      _clear_disp = true;
       break;
     case g_state.pt_cfg_dec_lim:
       g_lcd.clear();
-      g_lcd.print(F("TODO: Dcel lim disp "));
+      _clear_disp = true;
+      g_lcd.print(F("TODO: Dcel lim disp "));  //TODO: used?
       break;
     case g_state.pt_cfg_dec_tgt:
       g_lcd.clear();
-      g_lcd.print(F("TODO: Dcel tgt disp "));
+      _clear_disp = true;
+      g_lcd.print(F("TODO: Dcel tgt disp "));  //TODO: used?
       break;
     case g_state.pt_cfg_fcurve:
       g_lcd.clear();
-      g_lcd.print(F("TODO: FcurveP disp  "));
+      g_lcd.print(F("TODO: FcurveP disp  "));  //TODO: used?
+      _clear_disp = true;
       break;
     case g_state.pt_presets:
       g_lcd.clear();
@@ -170,6 +195,7 @@ void displayUpdate()
           g_lcd.print(F("  --")); 
         }
       }
+      _clear_disp = true;
       break;
     case g_state.pt_presets_edit:
       g_lcd.clear();
@@ -215,6 +241,7 @@ void displayUpdate()
       }
       g_lcd.cursor();
       g_lcd.blink();  
+      _clear_disp = true;
       break;    
     case g_state.pt_powders:
       g_lcd.clear();
@@ -238,6 +265,7 @@ void displayUpdate()
         }
         g_lcd.print(buff);
       }
+      _clear_disp = true;
       break;    
     case g_state.pt_powders_edit:
       g_lcd.clear();
@@ -269,10 +297,12 @@ void displayUpdate()
       }
       g_lcd.cursor();
       g_lcd.blink();
+      _clear_disp = true;
       break;
     default:
       DEBUGP(g_state.getStateName());
       DEBUGLN(F(" is unknown state in displayUpdate()"));
+      _clear_disp = true;
       return;
   }
 }

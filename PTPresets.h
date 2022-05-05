@@ -16,7 +16,7 @@
 //0 base, 50 presets
 #define MAX_PRESETS 49 
 #define PRESETS_ADDR_BASE CONFIG_DATA_SIZE + 8
-#define PRESET_NAME_LEN 16
+#define PRESET_NAME_LEN 16 //TODO: consider consolidating to a common NAME_LEN
 
 /*
  * Type def for PresetData.  

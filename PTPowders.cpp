@@ -56,6 +56,7 @@ int PowderManager::getPowderVersion()
 /*
  * Copy current loaded buffer's powder name into buff.
  * ERROR and return false if length of powder name too long.
+ * TODO: change to just return pointer to char array.
  */
 bool PowderManager::getPowderName(char* buff)
 {

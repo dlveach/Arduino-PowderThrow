@@ -13,8 +13,13 @@
 PTConfig::PTConfig() 
 {
   _config_buffer = _defaults;
-  _kernel_factor = 0.0200; // gn of Varget per kernel TODO: move to FRAM for powder definitions
   _dirty = false;
+  // initialize indirect (copied) data
+  _preset = -1;           // current preset index
+  _preset_name[0] = 0x00; // from current preset
+  _target_weight = -1;    // from current preset
+  _powder_name[0] = 0x00; // from current preset -> powder
+  _kernel_factor = -1;    // from current preset -> powder
 }
 
 /*
@@ -48,14 +53,6 @@ bool PTConfig::isDirty()
 int PTConfig::getVersion()
 {
   return (_config_buffer._config_data.config_version);
-}
-
-/*
- * 
- */
-float PTConfig::getKernelFactor()
-{
-  return (_kernel_factor); 
 }
 
 /*
@@ -178,6 +175,56 @@ void PTConfig::setMgTolerance(float value)
 }
 
 /*
+ * 
+ */
+char* PTConfig::getPresetName()
+{
+  return (_preset_name);
+}
+
+/*
+ * 
+ */
+void PTConfig::setPresetName(char* buff)
+{
+  strncpy(_preset_name, buff, NAME_LEN);
+  _preset_name[NAME_LEN]=0;
+}
+
+/*
+ * 
+ */
+char* PTConfig::getPowderName()
+{
+  return (_powder_name);
+}
+
+/*
+ * 
+ */
+void PTConfig::setPowderName(char* buff)
+{
+  strncpy(_powder_name, buff, NAME_LEN);
+  _powder_name[NAME_LEN]=0;
+}
+
+/*
+ * 
+ */
+float PTConfig::getKernelFactor()
+{
+  return (_kernel_factor); 
+}
+
+/*
+ * 
+ */
+void PTConfig::setKernelFactor(float value)
+{
+  _kernel_factor = value;
+}
+
+/*
  * Reset system config to current config buffer.
  */
 boolean PTConfig::resetConfig()
@@ -241,6 +288,11 @@ boolean PTConfig::saveConfig(boolean init)
   return (false);
 }
 
+
+/*******************
+ * PRIVATE
+ ******************/
+ 
 /*
  * Writes the config buffer to FRAM.
  */
@@ -268,32 +320,43 @@ boolean PTConfig::_readConfigData ()
   return (true);
 }
 
+/*********************
+ * DEBUG / TEST
+ *********************/
+
 /*
  * Debug helper printConfig().  
  * Dump current config buffer to Serial.
  */
 void PTConfig::printConfig() {
-  char buff[21];
+  char buff[80];
   int bsize = sizeof(buff);
-  snprintf(buff, bsize, "Cfg Ver: %-5d", _config_buffer._config_data.config_version);
+  DEBUGLN(F("Stored (FRAM) data:"));
+  sprintf(buff, "Config Version: %-5d", _config_buffer._config_data.config_version);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "Chrg Tgt: %-6.2f", _target_weight);
+  sprintf(buff, "Decel Threshold: %4.2f", _config_buffer._config_data.decel_threshold);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "Dec Thresh: %4.2f", _config_buffer._config_data.decel_threshold);
+  sprintf(buff, "Decel Limit: %-5d", _config_buffer._config_data.decel_limit);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "Dec Lim: %-5d", _config_buffer._config_data.decel_limit);
+  sprintf(buff, "Bump Threshold: %4.2f", _config_buffer._config_data.bump_threshold);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "Bmp Thresh: %4.2f", _config_buffer._config_data.bump_threshold);
+  sprintf(buff, "Fscale P: %-5.2f", _config_buffer._config_data.fscaleP);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "fScale P: %-5.2f", _config_buffer._config_data.fscaleP);
-  DEBUGLN(buff);  
-  snprintf(buff, bsize, "GN Tol: %-5.3f", _config_buffer._config_data.gn_tolerance);
+  sprintf(buff, "GN Tol: %-5.3f", _config_buffer._config_data.gn_tolerance);
   DEBUGLN(buff);
-  snprintf(buff, bsize, "MG Tol: %-5.3f", _config_buffer._config_data.mg_tolerance);
+  sprintf(buff, "MG Tol: %-5.3f", _config_buffer._config_data.mg_tolerance);
   DEBUGLN(buff);  
-  snprintf(buff, bsize, "Preset: %-2d", _config_buffer._config_data.preset);
+  sprintf(buff, "Preset Index: %-2d", _config_buffer._config_data.preset);
   DEBUGLN(buff);
-  snprintf(buff, bsize, "Cfg data size: %d", CONFIG_DATA_SIZE);
+  sprintf(buff, "Config stored data size: %d", CONFIG_DATA_SIZE);
   DEBUGLN(buff);
-  
+  DEBUGLN(F("Indirect (from preset/powder) data:"));
+  sprintf(buff, "Preset Name: %s", _preset_name);
+  DEBUGLN(buff);
+  sprintf(buff, "Powder Name: %s", _powder_name);
+  DEBUGLN(buff);
+  sprintf(buff, "Target Weight: %-6.2f gn", _target_weight);
+  DEBUGLN(buff);  
+  sprintf(buff, "Kernel Factor: %-8.6f", _kernel_factor);
+  DEBUGLN(buff);
 }
