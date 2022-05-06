@@ -45,8 +45,12 @@ void util_setFscaleCurve(float* _curve_map, float _fscaleP = 1.0)
   {
     _curve_map[j] = fscale(0, 100, 0, 100, j, _fscaleP);
   }
-  dumpFCurve(); // Uncomment to debug
+  //dumpFCurve(); // Uncomment to debug
 }
+
+/*
+ * 
+ */
 float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve)
 {
   float OriginalRange = 0;

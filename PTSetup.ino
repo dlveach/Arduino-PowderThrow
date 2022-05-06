@@ -66,8 +66,19 @@ void setup() {
   g_mcp.setupInterruptPin(BTN_UP, LOW);
   g_mcp.setupInterruptPin(BTN_DOWN, LOW);
   pinMode(INT_PIN, INPUT);  // configure nano pin for MCP interrupt
-  delay(1000);
-  g_mcp.getLastInterruptPin();  //clear it just in case
+  g_mcp.pinMode(MCP_LED_RED_PIN, OUTPUT);
+  g_mcp.pinMode(MCP_LED_GRN_PIN, OUTPUT);
+  g_mcp.pinMode(MCP_LED_YEL2_PIN, OUTPUT);
+  g_mcp.pinMode(MCP_LED_YEL1_PIN, OUTPUT);
+  g_mcp.pinMode(MCP_LED_BLU_PIN, OUTPUT);
+  //initialize LED objects with MCP
+  g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
+  g_LED_Yel_1.init(g_mcp, MCP_LED_YEL1_PIN);
+  g_LED_Yel_2.init(g_mcp, MCP_LED_YEL2_PIN);
+  g_LED_Grn.init(g_mcp, MCP_LED_GRN_PIN);
+  g_LED_Red.init(g_mcp, MCP_LED_RED_PIN);
+  //clear it just in case
+  g_mcp.getLastInterruptPin(); 
   delay(10);
   g_mcp.getLastInterruptPin();  //be really sure!!!
 

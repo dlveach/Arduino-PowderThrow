@@ -1,8 +1,9 @@
 /***********************************************************************
- * PowderThrow 2.0 Prototype
+ * PowderThrow 2.0
  * 
  * 
- * Just getting started.  Trying out new hardware.
+ * Redesigned with new hardware (including BlueTooth.
+ * New OO design approach.
  * 
  * I2C Addresses:
  *   20x4 LCD Display driver:  0x27
@@ -11,10 +12,18 @@
  *   TIC stepper driver board 2: 0x0F
  *   FRAM board: 0x50
  *   
+ *   TODO: 
+ *   - LOTS of stuff for bluetooth
+ *   - Calibrate trickler speed
+ *   - Clean up debug stuff
+ *   - Evaluate headers, possible circular deps, possible refactoring
  *   
  ***********************************************************************/
 
 #include "PowderThrow.h"
+
+//void setLEDs(bool forceOff=true); //TODO move to prototypes
+void updateLEDs(bool forceOff = false);
 
 /*
  * The main loop
@@ -28,9 +37,6 @@ void loop() {
 
 /*
  * System run state logic
- * 
- * TODO: LED management
- *  on both controllers.
  *  
  */
 void runSystem()
@@ -68,22 +74,27 @@ void runSystem()
       (s == PTState::pt_paused) ||
       (s == PTState::pt_locked)))
   {
-    //DEBUGLN(F("runSystem(): not in running state, just exit"));
+    //Not in running state, turn LEDs off and exit
+    updateLEDs(true); //true = force all Off
     return;  
   }
   
   g_scale.checkScale();
   if (!g_scale.isConnected()) 
   { 
+    DEBUGLN(F("Scale not connected while in running state, stop all."));
+    //TODO: set a state?  
+    //TODO: Should we really stop all in all states?
     stopAll();
     g_display_changed = true; 
     displayUpdate();
     return; 
   }   
   
-  if (!isSystemCalibrated()) { 
-    DEBUGLN(F("System not calibrated."));
-    //TODO: should this be a state change?
+  if (g_scale.getCondition() == PTScale::undef) 
+  {
+    DEBUGLN(F("RunSystem(); Scale not ready. State == undef"));
+    delay(1000);  //DEBUGGING
     return; 
   } 
 
@@ -120,7 +131,7 @@ void runSystem()
         return;
     }
   }
-  
+
   // Handle running states
   switch (g_state.getState())
   {
@@ -130,6 +141,11 @@ void runSystem()
         DEBUGLN(F("State == Ready and pan on scale & stable, Start Throwing."));
         g_state.setState(PTState::pt_throwing);
       }
+      g_LED_Blu.setOn();
+      g_LED_Yel_1.setOff();
+      g_LED_Yel_2.setOff();
+      g_LED_Grn.setOff();
+      g_LED_Red.setOff();       
       break;
     case PTState::pt_throwing:
       //TODO: replace this with call to manualThrow() ???? (don't dupe code)
@@ -138,7 +154,7 @@ void runSystem()
         case 0: //stopped
           DEBUGLN(F("Thrower stopped, start it forward and start trickler."));
           g_TIC_thrower.setTargetPosition(g_thrower_bottom_pos);
-          runTrickler();
+          startTrickler();
           _thrower_state = 1;
           break;
         case 1: //forward
@@ -173,13 +189,23 @@ void runSystem()
           displayUpdate();
           return;
       }
+      g_LED_Blu.setOff();
+      g_LED_Yel_1.setOn();
+      g_LED_Yel_2.setOff();
+      g_LED_Grn.setOff();
+      g_LED_Red.setOff();       
       break;
     case PTState::pt_trickling:
       if (scale_cond == PTScale::close_to_tgt)
       {
-        DEBUGP(F("Trickling and close to tgt, slow down. Delta = "));
-        DEBUGLN(g_scale.getDelta());
+        //DEBUGP(F("Trickling and close to tgt, slow down. Delta = "));
+        //DEBUGLN(g_scale.getDelta());
         setTricklerSpeed();
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setFlash();
+        g_LED_Yel_2.setOff();
+        g_LED_Grn.setOff();
+        g_LED_Red.setOff();       
       }
       else if (scale_cond == PTScale::very_close_to_tgt)
       {
@@ -202,9 +228,26 @@ void runSystem()
         g_state.setState(PTState::pt_paused);
         _pause_time = run_time; //start pause timer 
       }
-      else if ((scale_cond != PTScale::under_tgt) || (scale_cond != PTScale::zero)) //TODO: could still be zero if no powder throw, allow this or reset to start over?
+      else if (scale_cond == PTScale::under_tgt) 
       {
-        //DEBUGLN(F("Keep on trickling!"));
+        //Make sure trickler is running
+        if (g_TIC_trickler.getCurrentVelocity() == 0)
+        {
+          DEBUGLN(F("WARN: Trickler stopped during trickling and under target.  Restart it."));
+          startTrickler();
+        }
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOn();
+        g_LED_Yel_2.setOff();
+        g_LED_Grn.setOff();
+        g_LED_Red.setOff();       
+      }
+      else if (scale_cond == PTScale::zero)
+      {
+        //Not expected, maybe powder container is empty (or closed)
+        //Set back to ready to try another throw.
+        DEBUGLN(F("WARN: Trickling and scale at zero.  Set ready to try throw again."));
+        g_state.setState(PTState::pt_ready);
       }
       else
       {
@@ -250,9 +293,30 @@ void runSystem()
       else
       {
         bumpTrickler();
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOn();
+        g_LED_Yel_2.setFlash();
+        g_LED_Grn.setOff();
+        g_LED_Red.setOff(); 
       }
       break;
     case PTState::pt_paused:
+      if (scale_cond == PTScale::on_tgt)
+      {
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOn();
+        g_LED_Yel_2.setOn();
+        g_LED_Grn.setFlash();
+        g_LED_Red.setOff();         
+      }
+      else if (scale_cond == PTScale::over_tgt)
+      {
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOn();
+        g_LED_Yel_2.setOn();
+        g_LED_Grn.setOff();
+        g_LED_Red.setFlash();                 
+      }
       if ((run_time - _pause_time) > SYSTEM_PAUSE_TIME)
       {
         _pause_time = run_time;
@@ -295,6 +359,22 @@ void runSystem()
       }
       break;
     case PTState::pt_locked:
+      if (scale_cond == PTScale::on_tgt)
+      {
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOff();
+        g_LED_Yel_2.setOff();
+        g_LED_Grn.setOn();
+        g_LED_Red.setOff();         
+      }
+      else if (scale_cond == PTScale::over_tgt)
+      {
+        g_LED_Blu.setOff();
+        g_LED_Yel_1.setOff();
+        g_LED_Yel_2.setOff();
+        g_LED_Grn.setOff();
+        g_LED_Red.setOn();                 
+      }
       if ((run_time - _lock_time) > SYSTEM_LOCK_TIME)
       {
         _lock_time = run_time;
@@ -335,12 +415,33 @@ void runSystem()
   }
   g_display_changed = true; 
   displayUpdate();
+  updateLEDs();
+}
+
+/*
+ * Update LEDs
+ */
+void updateLEDs(bool forceOff)
+{
+  if (forceOff)
+  {
+    g_LED_Blu.setOff();
+    g_LED_Yel_1.setOff();
+    g_LED_Yel_2.setOff();
+    g_LED_Grn.setOff();
+    g_LED_Red.setOff();  
+  }
+  g_LED_Blu.update();
+  g_LED_Yel_1.update();
+  g_LED_Yel_2.update();
+  g_LED_Grn.update();
+  g_LED_Red.update();
 }
 
 /*
  * Run the trickler
  */
-void runTrickler()
+void startTrickler()
 {
   DEBUGLN(F("Starting the trickler."));
   if (g_TIC_trickler.getCurrentVelocity() != 0)
@@ -421,7 +522,6 @@ void stopAll()
   g_TIC_trickler.setTargetVelocity(0);
   g_TIC_thrower.setTargetVelocity(0);
   //TODO:  if thrower not at home pos, move it there?
-  //TODO: use halt on trickler instead? (if using variable accell settings in TIC)
 /*  
   if (g_TIC_thrower.getCurrentPosition() != g_thrower_top_pos)
   {
@@ -438,7 +538,7 @@ void stopAll()
  bool isSystemCalibrated()
  {
   bool cal = true;
-  if (cal) { cal = !(g_TIC_thrower.getPositionUncertain()); }  // thrower calibrated
+  //if (cal) { cal = !(g_TIC_thrower.getPositionUncertain()); }  // thrower calibrated
   if (cal) { cal = (g_scale.getCondition() != PTScale::undef); }  // Scale calibrated  
   return (cal);
  }

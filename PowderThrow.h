@@ -16,6 +16,7 @@
 #include "PTScale.h"
 #include "PTPresets.h"
 #include "PTPowders.h"
+#include "PTLed.h"
 
 //HARDWARE
 #define LCD_I2C_ADDR 0x27     // PCF8574 I2C 20x4 LCD shield (SunFounder)
@@ -23,21 +24,27 @@
 #define TIC1_I2C_ADDR 0x0E    // Pololu TIC 500 Stepper Controller
 #define TIC2_I2C_ADDR 0x0F    // Pololu TIC 500 Stepper Controller
 #define FRAM_I2C_ADDR 0x50    // Adafruit FRAM breakout board
-#define BTN_OK 3      // MCP23017 button pin 
-#define BTN_LEFT 4    // MCP23017 button pin 
-#define BTN_UP 5      // MCP23017 button pin 
-#define BTN_DOWN 6    // MCP23017 button pin 
-#define BTN_RIGHT 7   // MCP23017 button pin 
-#define INT_PIN 7      // MCU pin for MCP interrupt
+#define BTN_OK 3              // MCP23017 button pin 
+#define BTN_LEFT 4            // MCP23017 button pin 
+#define BTN_UP 5              // MCP23017 button pin 
+#define BTN_DOWN 6            // MCP23017 button pin 
+#define BTN_RIGHT 7           // MCP23017 button pin 
+#define INT_PIN 7             // MCU pin for MCP interrupt
+#define MCP_LED_RED_PIN 8
+#define MCP_LED_GRN_PIN 9
+#define MCP_LED_YEL2_PIN 10
+#define MCP_LED_YEL1_PIN 11
+#define MCP_LED_BLU_PIN 12
+ 
 
 //TIC hardware settings
 #define TIC_PULSE_MULTIPLIER 10000      // TIC uses pulses/10,000 Seconds for speed. See TIC documentation.
-#define TIC_STEP_MODE TicStepMode::Microstep8  //TIC microstep mode (both TICs) NOTE: Many things need adjusting if changed
+#define TIC_STEP_MODE TicStepMode::Microstep8  //TIC microstep mode.  WARNING: Many things need adjusting if changed
 #define TIC_TRICKLER_CURRENT_LIMIT 350  //TIC current limit in milliamps (see TIC docs)
 #define TIC_TRICKLER_MAX_ACCEL 500000   //steps per second per second
 #define TIC_TRICKLER_MAX_DECEL 5000000  //steps per second per second
 #define TIC_TRICKLER_STARTING_SPEED 100 * TIC_PULSE_MULTIPLIER    //steps per second
-#define TIC_THROWER_CURRENT_LIMIT 500   //TIC current limit in milliamps (see TIC docs
+#define TIC_THROWER_CURRENT_LIMIT 500   //TIC current limit in milliamps (see TIC docs)
 #define TIC_THROWER_MAX_ACCEL 1000000   //steps per second per second
 #define TIC_THROWER_MAX_DECEL 1000000   //steps per second per second
 
@@ -62,8 +69,9 @@
 #define FCURVEP_DEC_LIMIT -10.0
 
 //SYSTEM RUN 
-#define DEBOUNCE 500   // Button debounce time 
-#define RUN_INTERVAL 50   //main loop system run interval, 50ms
+#define DEBOUNCE 500                    //Button debounce time millis
+#define RUN_INTERVAL 50                 //main loop system run interval, 50ms
+#define SERIAL_TIMEOUT 100              //Millis before serial comm timeout
 
 /*
  * System wide globals
@@ -78,6 +86,11 @@ PTState g_state(PTState::pt_undefined);
 PTScale g_scale;
 PresetManager g_presets;
 PowderManager g_powders;
+PTLed g_LED_Blu;
+PTLed g_LED_Yel_1;
+PTLed g_LED_Yel_2;
+PTLed g_LED_Grn;
+PTLed g_LED_Red;
 
 float g_curve_map[101];  // Curve for trickler slowdown
 int g_trickler_cal_speed = MAX_TRICKLER_SPEED;  //init at max until calibrated

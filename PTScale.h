@@ -12,7 +12,8 @@
 
 #define SCALE_MODE_GRAIN 1
 #define SCALE_MODE_GRAM 2
-#define SCALE_POLLING_RATE 50   //millis
+//#define SCALE_POLLING_RATE 50   //millis
+#define SERIAL_TIMEOUT 100      //Millis before serial comm timeout
 
 // grams per grain conversion factor
 static float GM_TO_GN_FACTOR = 0.06479891; 
