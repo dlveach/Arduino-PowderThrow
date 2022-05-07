@@ -141,7 +141,7 @@ void PTConfig::setDecelLimit(int value)
 }
 
 /*
- * 
+ * TODO: add this to GUI to configure
  */
 float PTConfig::getGnTolerance()
 {
@@ -158,21 +158,17 @@ void PTConfig::setGnTolerance(float value)
 }
 
 /*
- * 
- */
 float PTConfig::getMgTolerance()
 {
   return (_config_buffer._config_data.mg_tolerance);  
 }
 
-/*
- * 
- */
 void PTConfig::setMgTolerance(float value)
 {
   _config_buffer._config_data.mg_tolerance = value;  
   _dirty = true;
-}
+} 
+*/
 
 /*
  * 
@@ -229,7 +225,7 @@ void PTConfig::setKernelFactor(float value)
  */
 boolean PTConfig::resetConfig()
 {
-  DEBUGLN(F("resetConfig(): reading FRAM storage for config."));
+  //DEBUGLN(F("resetConfig(): reading FRAM storage for config."));
   if (!_readConfigData()) 
   {
     DEBUGLN(F("resetConfig(): ERROR: could not read FRAM storage."));
@@ -245,7 +241,7 @@ boolean PTConfig::resetConfig()
  */
 boolean PTConfig::loadConfig()
 {
-  DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
+  //DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
   if (!_readConfigData()) 
   {
     DEBUGLN(F("loadConfig(): ERROR: could not read FRAM storage."));
@@ -253,11 +249,7 @@ boolean PTConfig::loadConfig()
   }
   else
   {
-    if (_config_buffer._config_data.config_version == CONFIG_VERSION) 
-    {
-      DEBUGLN(F("loadConfig(): Loaded settings from FRAM storage."));    
-    }
-    else
+    if (_config_buffer._config_data.config_version != CONFIG_VERSION) 
     {
       DEBUGLN(F("loadConfig(): Config version out of sync, set to defaults."));    
       saveConfig(true);
@@ -275,11 +267,11 @@ boolean PTConfig::saveConfig(boolean init)
 {
   if (init)
   {
-    DEBUGLN(F("saveSettings(): Initializing config to defaults."));
+    //DEBUGLN(F("saveSettings(): Initializing config to defaults."));
     _config_buffer = _defaults;
   }
   if (!_dirty) { return (true); } //no changes to save
-  DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
+  //DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
   if (_writeConfigData())
   {
     _dirty = false;
@@ -334,29 +326,29 @@ void PTConfig::printConfig() {
   DEBUGLN(F("Stored (FRAM) data:"));
   sprintf(buff, "Config Version: %-5d", _config_buffer._config_data.config_version);
   DEBUGLN(buff);  
-  sprintf(buff, "Decel Threshold: %4.2f", _config_buffer._config_data.decel_threshold);
+  sprintf(buff, "Config Decel Threshold: %4.2f", _config_buffer._config_data.decel_threshold);
   DEBUGLN(buff);  
-  sprintf(buff, "Decel Limit: %-5d", _config_buffer._config_data.decel_limit);
+  sprintf(buff, "Config Decel Limit: %-5d", _config_buffer._config_data.decel_limit);
   DEBUGLN(buff);  
-  sprintf(buff, "Bump Threshold: %4.2f", _config_buffer._config_data.bump_threshold);
+  sprintf(buff, "Config Bump Threshold: %4.2f", _config_buffer._config_data.bump_threshold);
   DEBUGLN(buff);  
-  sprintf(buff, "Fscale P: %-5.2f", _config_buffer._config_data.fscaleP);
+  sprintf(buff, "Config Fscale P: %-5.2f", _config_buffer._config_data.fscaleP);
   DEBUGLN(buff);  
-  sprintf(buff, "GN Tol: %-5.3f", _config_buffer._config_data.gn_tolerance);
+  sprintf(buff, "Config GN Tol: %-5.3f", _config_buffer._config_data.gn_tolerance);
   DEBUGLN(buff);
-  sprintf(buff, "MG Tol: %-5.3f", _config_buffer._config_data.mg_tolerance);
+  sprintf(buff, "Config MG Tol: %-5.3f", _config_buffer._config_data.mg_tolerance);
   DEBUGLN(buff);  
-  sprintf(buff, "Preset Index: %-2d", _config_buffer._config_data.preset);
+  sprintf(buff, "Config Preset Index: %-2d", _config_buffer._config_data.preset);
   DEBUGLN(buff);
   sprintf(buff, "Config stored data size: %d", CONFIG_DATA_SIZE);
   DEBUGLN(buff);
   DEBUGLN(F("Indirect (from preset/powder) data:"));
   sprintf(buff, "Preset Name: %s", _preset_name);
   DEBUGLN(buff);
+  sprintf(buff, "Preset Target Weight: %-6.2f gn", _target_weight);
+  DEBUGLN(buff);  
   sprintf(buff, "Powder Name: %s", _powder_name);
   DEBUGLN(buff);
-  sprintf(buff, "Target Weight: %-6.2f gn", _target_weight);
-  DEBUGLN(buff);  
-  sprintf(buff, "Kernel Factor: %-8.6f", _kernel_factor);
+  sprintf(buff, "Powder Kernel Factor: %-8.6f", _kernel_factor);
   DEBUGLN(buff);
 }

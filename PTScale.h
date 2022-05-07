@@ -10,14 +10,15 @@
 #ifndef PTSCALE_H
 #define PTSCALE_H 
 
+#define SCALE_MODE_GRAM 0
 #define SCALE_MODE_GRAIN 1
-#define SCALE_MODE_GRAM 2
-//#define SCALE_POLLING_RATE 50   //millis
 #define SERIAL_TIMEOUT 100      //Millis before serial comm timeout
+#define MIN_CALIBRATION_WEIGHT -20 //in grains.  A large amount in case scale drifts a tiny bit off zero.
 
 // grams per grain conversion factor
 static float GM_TO_GN_FACTOR = 0.06479891; 
 static const char* ConditionNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Cls","On Tgt","Over Tgt","Undef"};
+static const char* ModeNames[] = {"Milligram","Grain"};
 
 /*
  * Class PTScale
@@ -51,12 +52,15 @@ class PTScale
     float getKernels();
     int getCondition();
     const char* getConditionName();
+    const char* getModeName();
     int getMode();
     //bool isChanged();
     bool isStable();
     void setOffScaleWeight();
     float getOffScaleWeight();
     bool isConnected();
+    void printConfig();
+    bool isCalibrated();
     
     // Actors
     boolean init(PTState, PTConfig);
@@ -69,6 +73,7 @@ class PTScale
     PTState _ptstate;   // The PTState object.
     PTConfig _ptconfig;   // The PTConfig object.
     float _target;    // The weight target.
+    bool _calibrated; // Has the setup calibration been done successfully
     bool _connected;  // State of Serial connection to scale
     float _delta;   // Delta to target weight.
     float _weight;  // Current measured weight.

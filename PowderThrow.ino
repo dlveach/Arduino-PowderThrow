@@ -18,6 +18,9 @@
  *   - Clean up debug stuff
  *   - Evaluate headers, possible circular deps, possible refactoring
  *   
+ *   BUGFIX
+ *   - format issues in display for Gram mode
+ *   
  ***********************************************************************/
 
 #include "PowderThrow.h"

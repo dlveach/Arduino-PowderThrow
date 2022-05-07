@@ -1,11 +1,5 @@
 
-//TODO: MAJOR BUG: reading FRAM in every display update!!!
-//  Fix:  get powder name (and preset name?) from internal buffers. 
-//        DO NOT reload buffer every time.
-//        Only load buffer when necessary (selecting a new preset
-//        or powder in a preset).  The buffers should stay current
-//        for all future display updates.  Obviously buffers change
-//        when saving preset or powder but same applies.
+//TODO: fix format issues in Gram mode.
 
 /*
  * 
@@ -38,6 +32,10 @@ void displayUpdate()
     case g_state.pt_paused:
     case g_state.pt_locked:
       if (_clear_disp) { g_lcd.clear(); }
+      char units[3]; 
+      if (g_scale.getMode() == SCALE_MODE_GRAIN) { strcpy(units, "gn"); }
+      else { strcpy(units, "G "); }
+      units[2] = 0x00;
       g_lcd.noCursor();
       g_lcd.setCursor(0,0);
       if (g_scale.isConnected())
@@ -55,32 +53,25 @@ void displayUpdate()
         sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());
         g_lcd.print(buff);
       }
-      if (_clear_disp)
+      
+      g_lcd.setCursor(0,2);
+      if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef) || (g_scale.getDelta() >= 10))
       {
-        g_lcd.setCursor(0,2);
-        sprintf(buff, "T:%6.2fgn  D:%6.2f ", g_scale.getTarget(), g_scale.getDelta());
-      }
-      else //TODO: fix this, must display negative delta and kernels
-      {
-        g_lcd.setCursor(14,2);
-        if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef))
-        {
-          sprintf(buff, "%s", "--.-- ");
-        }
-        else
-        {
-          sprintf(buff, "%-6.2f", g_scale.getDelta());
-        }
-      }
-      g_lcd.print(buff);
-      g_lcd.setCursor(0,3);
-        if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef))
-      {
-        sprintf(buff, "C:%6.2fgn K:--.-- ", g_scale.getWeight());          
+        sprintf(buff, "T:% 05.3f%2s D: -.---", g_scale.getTarget(), units, g_scale.getDelta());
       }
       else
       {
-        sprintf(buff, "C:%6.2fgn K:%6.2f ", g_scale.getWeight(), g_scale.getKernels());
+        sprintf(buff, "T:% 06.3f%2s D:% 5.3f", g_scale.getTarget(), units, g_scale.getDelta());
+      }
+      g_lcd.print(buff);
+      g_lcd.setCursor(0,3);
+      if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef) || (g_scale.getKernels() >= 1000))
+      {
+        sprintf(buff, "C: --.---%2s K: ---.-", units);          
+      }
+      else
+      {
+        sprintf(buff, "C:% 06.3f%2s K:% 05.1f", g_scale.getWeight(), units, g_scale.getKernels());
       }
       g_lcd.print(buff);
       _clear_disp = false;

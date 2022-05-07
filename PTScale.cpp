@@ -7,6 +7,9 @@
 #include "Arduino.h"
 #include "PTScale.h"
 
+bool _debug = false;
+bool print_diag = false;  //set true for debug diagnostics
+
 /*
  * Constructor
  */
@@ -14,10 +17,13 @@ PTScale::PTScale()
 {
   _cond = PTScale::undef;
   _connected = false;
+  _target = 0;
+  _delta = -1;
+  _weight = 0;
+  _kernels = -1;
+  _off_scale_weight = 0; //not calibrated yet
+  _calibrated = false;
 }
-
-bool _debug = false;
-bool print_diag = false;  //set true for debug diagnostics
 
 /*
  * Initialize the scale object.  
@@ -29,16 +35,12 @@ bool PTScale::init(PTState s, PTConfig c)
 {
   _ptstate = s;
   _ptconfig = c;
-  _target = 0;
-  _delta = -1;
-  _weight = 0;
-  _kernels = -1;
   Serial1.begin(19200, SERIAL_8N1);
   while (!Serial1);
   delay(100);
   checkScale();
   delay(100);
-  checkScale(); //First try fails, why?
+  checkScale(); //First try fails, TODO: I think I fixed this, test it.
   return (_connected);
 }
 
@@ -49,10 +51,27 @@ const char* PTScale::getConditionName()
 {
   return ConditionNames[_cond];
 }
+
 /*
  * 
  */
-void PTScale::setTarget(float t) { _target = t; }
+const char* PTScale::getModeName()
+{
+  return ModeNames[_mode];  
+}
+
+/*
+ * Set scale target (in Grains). 
+ * Adjust to mg if necessary.
+ */
+void PTScale::setTarget(float t) 
+{   
+  _target = t; 
+  if (_mode == SCALE_MODE_GRAM)
+  {
+    _target = _target * GM_TO_GN_FACTOR;
+  }
+}
 
 /*
  * 
@@ -87,11 +106,6 @@ int PTScale::getMode() { return (_mode); }
 /*
  * 
  */
-//bool PTScale::isChanged() { return (_display_changed); }
-
-/*
- * 
- */
 bool PTScale::isStable() { return (_stable); }
 
 /*
@@ -104,10 +118,29 @@ bool PTScale::isConnected() { return (_connected); }
  * Save that empty scale weight.  Scale was zeroed with pan on
  * so this empty weight will be a negative number.
  */
-void PTScale::setOffScaleWeight() { _off_scale_weight = _weight; }
+void PTScale::setOffScaleWeight() 
+{
+  //Only set if below a threshold.  Protect against forgot to
+  //remove pan and scale drifted negative.
+  float threshold = MIN_CALIBRATION_WEIGHT;
+  if (_mode == SCALE_MODE_GRAIN) { threshold = threshold * GM_TO_GN_FACTOR; }
+  if (_weight < threshold)
+  { 
+    _off_scale_weight = _weight; 
+    _calibrated = true;
+  }
+}
 
+/*
+ * 
+ */
 float PTScale::getOffScaleWeight() { return (_off_scale_weight); }
- 
+
+/*
+ * If scale has been calibrated, it was zero with pan on so 
+ * pan off scale weight is negative.
+ */
+boolean PTScale::isCalibrated() { return (_calibrated); }
 /*
  * 
  */
@@ -132,7 +165,7 @@ void PTScale::checkScale()
   byte idx = 0; // Index into array; where to store the character
   char in_char = -1; // The character read
   char serial_data[20]; // data buffer
-  float tol = _ptconfig.getGnTolerance();      
+  //float tol = _ptconfig.getGnTolerance();      
   unsigned long _t;
   unsigned long timeout;
   static unsigned long _max_t = 0;
@@ -206,10 +239,36 @@ void PTScale::checkScale()
     _stable = (serial_data[0] == 'S');
     if (serial_data[14] == 'g')
     {
+      if (_mode != SCALE_MODE_GRAM) 
+      { 
+        //changed from gn -> mg
+        _target = _target * GM_TO_GN_FACTOR;
+        _off_scale_weight = _off_scale_weight * GM_TO_GN_FACTOR;
+        /*
+        Serial.println("Change GN -> MG");
+        Serial.print("_target = ");
+        Serial.println(_target);
+        Serial.print("_off_scale_weight = ");
+        Serial.println(_off_scale_weight);
+        */
+      }
       _mode = SCALE_MODE_GRAM;
     }
     else if ((serial_data[13] == 'G') && (serial_data[14] == 'N'))
     {
+      if (_mode != SCALE_MODE_GRAIN) 
+      { 
+        //changed from mg -> gn
+        _target = _target / GM_TO_GN_FACTOR;
+        _off_scale_weight = _off_scale_weight / GM_TO_GN_FACTOR;
+        /*
+        Serial.println("Change MG -> GN");
+        Serial.print("_target = ");
+        Serial.println(_target);
+        Serial.print("_off_scale_weight = ");
+        Serial.println(_off_scale_weight);
+        */
+      }
       _mode = SCALE_MODE_GRAIN;
     }
     else
@@ -220,32 +279,32 @@ void PTScale::checkScale()
       _serial_lock = false;
       return;
     }
-
-    // copy weight char data to a buffer, convert to float
+    
+    //copy weight char data to a buffer, convert to float
     byte cpyIndex = 9;
     while (cpyIndex--) *(_weight_data + cpyIndex) = *(serial_data + cpyIndex + 3);
     _weight_data[9] = 0; //null terminiate
     _weight = atof(_weight_data); 
-
-    // set delta and kernels to target calculations
-    if (_mode == SCALE_MODE_GRAM) tol = _ptconfig.getMgTolerance();
-    switch (_mode)
+    
+    //calculate scale data values and set states
+    _delta = _target - _weight;
+    _kernels = _delta / _ptconfig.getKernelFactor();
+    float tol = _ptconfig.getGnTolerance();    
+    float decel_thresh = _ptconfig.getDecelThreshold();
+    float bump_thresh = _ptconfig.getBumpThreshold();
+    //adjust for grams if necessary
+    if (_mode == SCALE_MODE_GRAM)
     {
-      case SCALE_MODE_GRAIN:
-        _delta = _target - _weight;
-        _kernels = _delta / _ptconfig.getKernelFactor();          
-        break;
-      case SCALE_MODE_GRAM:
-        _delta = (_target * GM_TO_GN_FACTOR) - _weight;
-        _kernels = _delta / (_ptconfig.getKernelFactor() * GM_TO_GN_FACTOR);
-      break;              
+      _kernels = (_delta / GM_TO_GN_FACTOR) / _ptconfig.getKernelFactor(); //kernel factor is in grains
+      tol = tol * GM_TO_GN_FACTOR;
+      decel_thresh = decel_thresh * GM_TO_GN_FACTOR;
+      bump_thresh = bump_thresh * GM_TO_GN_FACTOR;              
     } 
        
     // now evaluate condition of scale based on weight and configuration
-    if (_off_scale_weight == 0)
+    if (!isCalibrated())
     {
-      //off scale weight should be 0 until calibrated
-      //TODO: is there a better way to handle this?
+      //set state and bypass everythign else
       _cond = PTScale::undef;
     }
     else if (_weight < (_off_scale_weight / 2))
@@ -264,11 +323,11 @@ void PTScale::checkScale()
     {
       _cond = PTScale::over_tgt;
     }
-    else if ((_delta <= _ptconfig.getDecelThreshold()) && (_delta > _ptconfig.getBumpThreshold()) && (_weight < _target))
+    else if ((_delta <= decel_thresh) && (_delta > bump_thresh) && (_weight < _target))
     {
       _cond = PTScale::close_to_tgt;
     }
-    else if ((_delta <= _ptconfig.getBumpThreshold()) && (_weight < _target))
+    else if ((_delta <= bump_thresh) && (_weight < _target))
     {
       _cond = PTScale::very_close_to_tgt;
     }
@@ -289,4 +348,41 @@ void PTScale::checkScale()
     }
     _serial_lock = false;
   }
+}
+
+/*
+    PTState _ptstate;   // The PTState object.
+    PTConfig _ptconfig;   // The PTConfig object.
+    float _target;    // The weight target.
+    bool _connected;  // State of Serial connection to scale
+    float _delta;   // Delta to target weight.
+    float _weight;  // Current measured weight.
+    int _cond;      // Condition of the scale (PTScale::condition_t enum).
+    int _mode;      // Scale setting: Grains or Grams (read from serial).
+    boolean _serial_lock; // Mutex for Serial1 communication.
+    boolean _stable;  // True if stable or false if not.
+    float _kernels;   // #kernels of powder off target
+    float _off_scale_weight;  //weght of empty platter during calibration
+ */
+void PTScale::printConfig()
+{
+  //TODO: incorporate DEBUG definitions
+  char buff[80];
+  Serial.println(F("Scale object data:"));
+  Serial.print(F("Scale Connected: "));
+  Serial.println(_connected);
+  Serial.print(F("Scale Target: "));
+  Serial.println(_target);
+  sprintf(buff, "Scale grain tolerance: %8.6f", _ptconfig.getGnTolerance()); 
+  Serial.println(buff);
+  sprintf(buff, "Scale milligram tolerance: %8.6f", _ptconfig.getGnTolerance() * GM_TO_GN_FACTOR); 
+  Serial.println(buff);
+  Serial.print(F("Scale Condition: "));
+  Serial.println(getConditionName());
+  Serial.print(F("Scale Mode: "));
+  Serial.println(getModeName());
+  Serial.print(F("Scale Off Scale Weight: "));
+  Serial.println(_off_scale_weight);
+  Serial.print(F("Scale is calibrated: "));
+  Serial.println(isCalibrated());
 }

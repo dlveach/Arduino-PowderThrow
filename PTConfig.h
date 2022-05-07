@@ -62,8 +62,8 @@ class PTConfig
     void setFcurveP(float);
     float getGnTolerance();
     void setGnTolerance(float);
-    float getMgTolerance();
-    void setMgTolerance(float);
+    //float getMgTolerance();
+    //void setMgTolerance(float);
     int getPreset();
     void setPreset(int);
     bool isDirty();

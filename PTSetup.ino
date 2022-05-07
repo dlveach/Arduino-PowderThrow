@@ -107,7 +107,6 @@ void setup() {
   DEBUGLN(F("Config loaded."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Config loaded ...   "));
-  g_config.printConfig(); // Uncomment to debug
   delay (1000);
 
   // Initialize Preset Manager
@@ -120,10 +119,6 @@ void setup() {
   DEBUGLN(F("Preset Manager initialized."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Presets loaded ...  "));
-  DEBUGP(F("Presets addr base: "));
-  DEBUGLN(PRESETS_ADDR_BASE);
-  DEBUGP(F("Size of each preset: "));
-  DEBUGLN(PRESET_DATA_SIZE);
   delay (1000);
 
   //Initialize Powder Manager
@@ -136,10 +131,6 @@ void setup() {
   DEBUGLN(F("Powder Manager initialized."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Powders loaded ...  "));
-  DEBUGP(F("Powders addr base: "));
-  DEBUGLN(POWDERS_ADDR_BASE);
-  DEBUGP(F("Size of each powder: "));
-  DEBUGLN(POWDER_DATA_SIZE);
   delay (1000);
 
   //Set copied data in config from presets and powders
@@ -165,8 +156,103 @@ void setup() {
   g_TIC_trickler.setStartingSpeed(TIC_TRICKLER_STARTING_SPEED);
   g_TIC_trickler.setMaxAccel(TIC_TRICKLER_MAX_ACCEL);
   g_TIC_trickler.setMaxDecel(TIC_TRICKLER_MAX_DECEL);
-  g_TIC_trickler.setMaxSpeed(MAX_TRICKLER_SPEED * TIC_PULSE_MULTIPLIER);
+  g_TIC_trickler.setMaxSpeed(MAX_TRICKLER_SPEED * TIC_PULSE_MULTIPLIER);  
+  g_TIC_trickler.setTargetVelocity(0);
+  g_TIC_thrower.setTargetVelocity(0);
+  g_TIC_trickler.exitSafeStart();
+  g_TIC_thrower.exitSafeStart();
+  DEBUGLN(F("TIC I2C drivers enabled"));
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("Step Drvrs enbld ..."));
+  delay (1000);
+  
+  // Setup scale   
+  while (!g_scale.isConnected())
+  {
+    if (g_scale.init(g_state, g_config))
+    {
+      DEBUGLN(F("Scale serial connection established."));
+      g_lcd.setCursor(0,2);
+      g_lcd.print(F("Scale connected.    "));
+      delay (1000);  
+      while (!g_scale.isCalibrated())
+      {
+        calibrateScale();
+        if (!g_scale.isCalibrated()) { 
+          //try agian
+          g_lcd.setCursor(0,2);
+          g_lcd.print(F("Calbiration failed  "));
+          g_lcd.setCursor(0,3);
+          g_lcd.print(F("Press any button ..."));
+          pauseForAnyButton();  
+          g_lcd.setCursor(0,3);
+          g_lcd.print(F("                    "));
+        }
+      }
+      //calibrateTrickler();  //TODO: move this to the Manual Operation menu?
+      setThrowerHome();
+      //delay(10);
+      g_scale.checkScale(); //update scale state
+      g_lcd.setCursor(0,2);
+      g_lcd.print(F("Scale calibrated.   "));
+      g_lcd.setCursor(0,3);
+      g_lcd.print(F("                    "));  
+      delay (1000);
+    }
+    else
+    {
+      //try again
+      DEBUGLN(F("WARNING: Scale serial connection failed."));
+      g_lcd.setCursor(0,2);
+      g_lcd.print(F("Scale not connected."));
+      g_lcd.setCursor(0,3);
+      g_lcd.print(F("Press any button ..."));
+      pauseForAnyButton();  
+      g_lcd.setCursor(0,3);
+      g_lcd.print(F("                    "));
+    }
+  }    
+  util_setFscaleCurve(g_curve_map, g_config.getFcurveP());
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("FCurve generated ..."));
+ 
+  delay(1000);
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("Setup complete.     "));
+  g_lcd.setCursor(0, 3);
+  g_lcd.print(F("Press any button ..."));
+  dumpSystemEnv();
+  //delay(1000);
+  pauseForAnyButton();
+  
+  g_state.setState(PTState::pt_menu);
+  g_display_changed = true;
+  displayUpdate();
+  g_mcp.getLastInterruptPin();  //clear it again, just in case
+}
+
+/*
+ * 
+ */
+void dumpSystemEnv()
+{
 #ifdef DEBUG_SERIAL
+  DEBUGLN();
+  DEBUGLN(F("***** System Configuration *****"));
+  DEBUGLN();
+  g_config.printConfig();
+  DEBUGLN();
+  DEBUGP(F("Presets addr base: "));
+  DEBUGLN(PRESETS_ADDR_BASE);
+  DEBUGP(F("Presets Size of each preset: "));
+  DEBUGLN(PRESET_DATA_SIZE);
+  DEBUGP(F("Powders addr base: "));
+  DEBUGLN(POWDERS_ADDR_BASE);
+  DEBUGP(F("Powders Size of each powder: "));
+  DEBUGLN(POWDER_DATA_SIZE);
+  
+  g_scale.printConfig();
+  DEBUGLN();
   DEBUGP(F("TIC step mode = "));
   switch (g_TIC_trickler.getStepMode())
   {
@@ -185,81 +271,33 @@ void setup() {
     default:
       DEBUGLN(F("Invalid value for TIC 500."));
   }
-  DEBUGP(F("Thrower TIC current limit = "));
+  DEBUGP(F("TIC Thrower current limit = "));
   DEBUGLN(g_TIC_thrower.getCurrentLimit());
-  DEBUGP(F("Thrower TIC Max Speed = "));
+  DEBUGP(F("TIC Thrower Max Speed = "));
   DEBUGLN(g_TIC_thrower.getMaxSpeed());
-  DEBUGP(F("Thrower TIC Start Speed = "));
+  DEBUGP(F("TIC Thrower Start Speed = "));
   DEBUGLN(g_TIC_thrower.getStartingSpeed());
-  DEBUGP(F("Thrower TIC Max Accel = "));
+  DEBUGP(F("TIC Thrower Max Accel = "));
   DEBUGLN(g_TIC_thrower.getMaxAccel());
-  DEBUGP(F("Thrower TIC Max Decel = "));
+  DEBUGP(F("TIC Thrower Max Decel = "));
   DEBUGLN(g_TIC_thrower.getMaxDecel());
-  DEBUGP(F("Trickler TIC current limit = "));
+  DEBUGP(F("TIC Thrower current pos = "));
+  DEBUGLN(g_TIC_thrower.getCurrentPosition());
+  DEBUGP(F("TIC Thrower steps to bottom pos = "));
+  DEBUGLN(g_thrower_bottom_pos);
+  DEBUGLN();
+  DEBUGP(F("TIC Trickler current limit = "));
   DEBUGLN(g_TIC_trickler.getCurrentLimit());
-  DEBUGP(F("Trickler TIC Max Speed = "));
+  DEBUGP(F("TIC Trickler Max Speed = "));
   DEBUGLN(g_TIC_trickler.getMaxSpeed());
-  DEBUGP(F("Trickler TIC Start Speed = "));
+  DEBUGP(F("TIC Trickler Start Speed = "));
   DEBUGLN(g_TIC_trickler.getStartingSpeed());
-  DEBUGP(F("Trickler TIC Max Accel = "));
+  DEBUGP(F("TIC Trickler Max Accel = "));
   DEBUGLN(g_TIC_trickler.getMaxAccel());
-  DEBUGP(F("Trickler TIC Max Decel = "));
+  DEBUGP(F("TIC Trickler Max Decel = "));
   DEBUGLN(g_TIC_trickler.getMaxDecel());
-#endif
-  g_TIC_trickler.setTargetVelocity(0);
-  g_TIC_thrower.setTargetVelocity(0);
-  g_TIC_trickler.exitSafeStart();
-  g_TIC_thrower.exitSafeStart();
-  DEBUGLN(F("TIC I2C drivers enabled"));
-  g_lcd.setCursor(0,2);
-  g_lcd.print(F("Step Drvrs enbld ..."));
-  delay (1000);
-  
-  // Setup scale   TODO: a retry loop?
-  if (g_scale.init(g_state, g_config))
-  {
-    DEBUGLN(F("Scale serial connection established."));
-    g_lcd.setCursor(0,2);
-    g_lcd.print(F("Scale connected.    "));
-    delay (1000);  
-    calibrateScale();
-    //calibrateTrickler();  //TODO: move this to the Manual Operation menu?
-    setThrowerHome();
-    delay(10);
-    g_scale.checkScale(); //update scale state
-    g_lcd.setCursor(0,2);
-    g_lcd.print(F("Scale calibrated.   "));
-    g_lcd.setCursor(0,3);
-    g_lcd.print(F("                    "));  
-    delay (10);
-    //DEBUG
-    DEBUGP(F("Pan Off weight = "));
-    DEBUGLN(g_scale.getOffScaleWeight());    
-    DEBUGP(F("Scale cond: "));
-    DEBUGLN(g_scale.getCondition());
-    delay (1000);
-  }
-  else
-  {
-    DEBUGLN(F("WARNING: Scale serial connection failed."));
-    g_lcd.setCursor(0,2);
-    g_lcd.print(F("Scale not connected."));
-    g_lcd.setCursor(0,3);
-    g_lcd.print(F("Press any button ..."));
-    pauseForAnyButton();  
-    g_lcd.setCursor(0,3);
-    g_lcd.print(F("                    "));
-  }
-    
-  util_setFscaleCurve(g_curve_map, g_config.getFcurveP());
-  g_lcd.setCursor(0,2);
-  g_lcd.print(F("FCurve generated ..."));
- 
-  delay(1000);
-  g_state.setState(PTState::pt_menu);
-  g_display_changed = true;
-  displayUpdate();
-  g_mcp.getLastInterruptPin();  //clear it just in case
+  DEBUGLN();
+#endif  
 }
 
 /*
@@ -281,11 +319,8 @@ void calibrateScale()
   g_lcd.setCursor(0,3);
   g_lcd.print(F("Press any button ..."));
   pauseForAnyButton();
-  DEBUGP(F("Scale pan off, weight ="));
-  DEBUGLN(g_scale.getWeight());
+  g_scale.checkScale(); //call to update weight
   g_scale.setOffScaleWeight();
-  DEBUGP("After setting pan_off_scale_weight: ");
-  DEBUGLN(g_scale.getOffScaleWeight());
 }
 
 /*
@@ -326,11 +361,4 @@ void calibrateTrickler()
   g_thrower_top_pos = 0;
   g_thrower_bottom_pos = THROWER_TRAVEL_DISTANCE; 
   g_TIC_thrower.exitSafeStart(); //clear safe start after deenergize
-  //TODO: set a state to indicate calibrated?
-  //TODO: is tic.getPositionUncertain() enough?
-  DEBUGLN(F("Thrower home pos = 0"));
-  DEBUGP(F("Thrower current pos = "));
-  DEBUGLN(g_TIC_thrower.getCurrentPosition());
-  DEBUGP(F("Thrower bottom pos = "));
-  DEBUGLN(g_thrower_bottom_pos);
  }

@@ -226,7 +226,7 @@ boolean PowderManager::loadPowder(int index)
     return (false); 
   }
   _cur_powder = index;
-  DEBUGLN(F("loadPowder(): reading FRAM storage for powder."));
+  //DEBUGLN(F("loadPowder(): reading FRAM storage for powder."));
   if (!_readPowderData()) 
   {
     DEBUGLN(F("loadPowder(): ERROR: could not read FRAM storage."));
@@ -234,11 +234,7 @@ boolean PowderManager::loadPowder(int index)
   }
   else
   {
-    if (_powder_buffer._powder_data.powder_version == POWDERS_VERSION) 
-    {
-      DEBUGLN(F("loadPowder(): Loaded powder from FRAM storage."));    
-    }
-    else
+    if (_powder_buffer._powder_data.powder_version != POWDERS_VERSION) 
     {
       DEBUGP(F("loadPowder(): Powder version "));
       DEBUGP(_powder_buffer._powder_data.powder_version);
@@ -276,8 +272,8 @@ boolean PowderManager::savePowder(boolean init)
     _dirty = true;
   }
   if (!_dirty) { return (true); }  //nothing to save
-  sprintf(_error_buff, "savePowder(): Saving powder %02d to FRAM storage.", _cur_powder);
-  DEBUGLN(_error_buff);
+  //sprintf(_error_buff, "savePowder(): Saving powder %02d to FRAM storage.", _cur_powder);
+  //DEBUGLN(_error_buff);
   if (_writePowderData())
   {
     _dirty = false;
@@ -304,8 +300,8 @@ boolean PowderManager::_writePowderData()
     _fram.write8(addr + i, _powder_buffer.raw_data[i]);
     idx = i;
   }
-  sprintf(_error_buff, "Starting at addr %d, wrote %d bytes to FRAM",addr, idx);
-  DEBUGLN(_error_buff);
+  //sprintf(_error_buff, "Starting at addr %d, wrote %d bytes to FRAM",addr, idx);
+  //DEBUGLN(_error_buff);
   return (true); 
 }
 
@@ -328,7 +324,7 @@ boolean PowderManager::_readPowderData()
     _powder_buffer.raw_data[i] = _fram.read8(addr + i);
     idx = i;
   }
-  sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
-  DEBUGLN(_error_buff);  
+  //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
+  //DEBUGLN(_error_buff);  
   return (true);
 }

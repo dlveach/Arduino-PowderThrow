@@ -170,7 +170,7 @@ boolean PresetManager::loadPreset(int index)
     return (false); 
   }
   _cur_preset = index;
-  DEBUGLN(F("loadPreset(): reading FRAM storage for preset."));
+  //DEBUGLN(F("loadPreset(): reading FRAM storage for preset."));
   if (!_readPresetData()) 
   {
     DEBUGLN(F("loadPreset(): ERROR: could not read FRAM storage."));
@@ -178,11 +178,7 @@ boolean PresetManager::loadPreset(int index)
   }
   else
   {
-    if (_preset_buffer._preset_data.preset_version == PRESETS_VERSION) 
-    {
-      DEBUGLN(F("loadPreset(): Loaded preset from FRAM storage."));    
-    }
-    else
+    if (_preset_buffer._preset_data.preset_version != PRESETS_VERSION) 
     {
       DEBUGP(F("loadPreset(): Preset version "));
       DEBUGP(_preset_buffer._preset_data.preset_version);
@@ -215,13 +211,13 @@ boolean PresetManager::savePreset(boolean init)
 {
   if (init)
   {
-    DEBUGLN(F("savePreset(): Initializing preset to defaults."));
+    //DEBUGLN(F("savePreset(): Initializing preset to defaults."));
     _preset_buffer = _defaults;
     _dirty = true;
   }
   if (!_dirty) { return (true); }  //nothing to save
-  sprintf(_error_buff, "savePreset(): Saving preset %02d to FRAM storage.");
-  DEBUGLN(_error_buff);
+  //sprintf(_error_buff, "savePreset(): Saving preset %02d to FRAM storage.");
+  //DEBUGLN(_error_buff);
   if (_writePresetData())
   {
     _dirty = false;
@@ -248,8 +244,8 @@ boolean PresetManager::_writePresetData()
     _fram.write8(addr + i, _preset_buffer.raw_data[i]);
     idx = i;
   }
-  sprintf(_error_buff, "Starting at addr %d, wrote %d bytes to FRAM",addr, idx);
-  DEBUGLN(_error_buff);
+  //sprintf(_error_buff, "Starting at addr %d, wrote %d bytes to FRAM",addr, idx);
+  //DEBUGLN(_error_buff);
   return (true); 
 }
 
@@ -272,6 +268,7 @@ boolean PresetManager::_readPresetData()
     _preset_buffer.raw_data[i] = _fram.read8(addr + i);
     idx = i;
   }
-  sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
-  DEBUGLN(_error_buff);  return (true);
+  //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
+  //DEBUGLN(_error_buff);  
+  return (true);
 }
