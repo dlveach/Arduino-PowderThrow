@@ -3,7 +3,7 @@
 
 #include <Adafruit_MCP23X17.h>
 
-#define FLASH_PERIOD 250  
+#define FLASH_RATE 250  //milliseconds  
 
 class PTLed
 {
@@ -15,7 +15,7 @@ class PTLed
     void init(Adafruit_MCP23X17 mcp, int _pin);
     void setOn();
     void setOff();
-    void setFlash();
+    void setFlash(int rate=FLASH_RATE);
     void update();
     
   private:
@@ -25,6 +25,7 @@ class PTLed
     int _pin;
     bool _state;
     bool _flashing;
+    int _flash_rate;
     unsigned long _last_flash;
     bool _needs_update;
     

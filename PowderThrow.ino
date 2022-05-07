@@ -28,7 +28,7 @@
 #include "PowderThrow.h"
 
 //void setLEDs(bool forceOff=true); //TODO move to prototypes
-void updateLEDs(bool forceOff = false);
+//void updateLEDs(bool forceOff = false);
 
 /*
  * The main loop
@@ -38,6 +38,7 @@ void loop() {
   //checkBlueTooth();  //TODO: lots in this area
   checkButtons();
   runSystem();
+  updateLEDs();
 }
 
 /*
@@ -80,7 +81,11 @@ void runSystem()
       (s == PTState::pt_locked)))
   {
     //Not in running state, turn LEDs off and exit
-    updateLEDs(true); //true = force all Off
+    g_LED_Blu.setOff();
+    g_LED_Yel_1.setOff();
+    g_LED_Yel_2.setOff();
+    g_LED_Grn.setOff();
+    g_LED_Red.setOff();  
     return;  
   }
   
@@ -146,7 +151,7 @@ void runSystem()
         DEBUGLN(F("State == Ready and pan on scale & stable, Start Throwing."));
         g_state.setState(PTState::pt_throwing);
       }
-      g_LED_Blu.setOn();
+      g_LED_Blu.setFlash(1000);
       g_LED_Yel_1.setOff();
       g_LED_Yel_2.setOff();
       g_LED_Grn.setOff();
@@ -420,22 +425,14 @@ void runSystem()
   }
   g_display_changed = true; 
   displayUpdate();
-  updateLEDs();
 }
 
 /*
  * Update LEDs
+ * Intended to be called often, from loop()
  */
-void updateLEDs(bool forceOff)
+void updateLEDs()
 {
-  if (forceOff)
-  {
-    g_LED_Blu.setOff();
-    g_LED_Yel_1.setOff();
-    g_LED_Yel_2.setOff();
-    g_LED_Grn.setOff();
-    g_LED_Red.setOff();  
-  }
   g_LED_Blu.update();
   g_LED_Yel_1.update();
   g_LED_Yel_2.update();
@@ -484,18 +481,13 @@ void setTricklerSpeed(bool force)
   int index = 100 - (100 * (dt - delta) / dt);
   if (index <= 1) index = 1;
   if (index >= 99) index = 99;
-  //Serial.print("Fcurve index = ");
-  //Serial.println(index);
   float value = g_curve_map[index];
   value = value / 100.0;
-  //Serial.print("Value = ");
-  //Serial.println(value);
   //speed is always negative so make limit negative
   int limit = -1 * g_config.getDecelLimit(); 
   //Adjust speed never slowing beyond limit
   int new_speed = ((g_trickler_cal_speed-limit)*value)+limit; 
-  //Serial.print("new speed = ");
-  //Serial.println(new_speed);
+
   if (abs(new_speed) < g_config.getDecelLimit()) 
   {
     //Shouldn't happen but just be sure not to slow beyond limit 

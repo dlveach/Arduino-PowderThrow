@@ -66,12 +66,13 @@ void PTLed::setOff()
 /*
  * 
  */
-void PTLed::setFlash()
+void PTLed::setFlash(int rate)
 {
   if (_initialized)
   {
     if (!_flashing) 
     {
+      _flash_rate = rate;
       _flashing = true;
       _needs_update = true;
     }
@@ -89,7 +90,7 @@ void PTLed::update()
   {
     if (_flashing)
     {
-      if ((millis() - _last_flash) > FLASH_PERIOD)
+      if ((millis() - _last_flash) > _flash_rate)
       {
         _last_flash = millis();
         _state = !_state;
