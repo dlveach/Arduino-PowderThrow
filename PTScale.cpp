@@ -39,8 +39,8 @@ bool PTScale::init(PTState s, PTConfig c)
   while (!Serial1);
   delay(100);
   checkScale();
-  delay(100);
-  checkScale(); //First try fails, TODO: I think I fixed this, test it.
+  //delay(100);
+  //checkScale(); //First try fails, TODO: I think I fixed this, test it.
   return (_connected);
 }
 

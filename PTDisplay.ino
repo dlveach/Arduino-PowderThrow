@@ -8,6 +8,8 @@ void displayUpdate()
 {
 //                        12345678901234567890
   static char buff[21] = "                    ";
+  static char fmt_line2[21] = "                    ";
+  static char fmt_line3[21] = "                    ";
   static bool _clear_disp = true; //static flag to avoid clear on every state update
 
   if (!g_display_changed) return;
@@ -32,10 +34,6 @@ void displayUpdate()
     case g_state.pt_paused:
     case g_state.pt_locked:
       if (_clear_disp) { g_lcd.clear(); }
-      char units[3]; 
-      if (g_scale.getMode() == SCALE_MODE_GRAIN) { strcpy(units, "gn"); }
-      else { strcpy(units, "G "); }
-      units[2] = 0x00;
       g_lcd.noCursor();
       g_lcd.setCursor(0,0);
       if (g_scale.isConnected())
@@ -57,22 +55,52 @@ void displayUpdate()
       g_lcd.setCursor(0,2);
       if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef) || (g_scale.getDelta() >= 10))
       {
-        sprintf(buff, "T:% 05.3f%2s D: -.---", g_scale.getTarget(), units, g_scale.getDelta());
+        if (g_scale.getMode() == SCALE_MODE_GRAM)
+        {
+          sprintf(buff, "T:% 05.3f G  D: -.---", g_scale.getTarget());
+        }
+        else
+        {
+          sprintf(buff, "T:% 05.2f gn D: --.--", g_scale.getTarget());
+        } 
       }
       else
       {
-        sprintf(buff, "T:% 06.3f%2s D:% 5.3f", g_scale.getTarget(), units, g_scale.getDelta());
+        if (g_scale.getMode() == SCALE_MODE_GRAM)
+        {
+          sprintf(buff, "T:% 05.3f G  D:% 5.3f", g_scale.getTarget(), g_scale.getDelta());
+        }
+        else
+        {
+          sprintf(buff, "T:% 05.2f gn D:% 5.2f", g_scale.getTarget(), g_scale.getDelta());
+        }
       }
+      pad(buff);
       g_lcd.print(buff);
       g_lcd.setCursor(0,3);
       if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef) || (g_scale.getKernels() >= 1000))
       {
-        sprintf(buff, "C: --.---%2s K: ---.-", units);          
+        if (g_scale.getMode() == SCALE_MODE_GRAM)
+        {
+          sprintf(buff, "C: -.--- G  K: ---.-");
+        }
+        else
+        {
+          sprintf(buff, "C: --.-- gn K: ---.-");
+        }
       }
       else
       {
-        sprintf(buff, "C:% 06.3f%2s K:% 05.1f", g_scale.getWeight(), units, g_scale.getKernels());
+        if (g_scale.getMode() == SCALE_MODE_GRAM)
+        {
+          sprintf(buff, "C:% 05.3f G  K:% 05.1f", g_scale.getWeight(), g_scale.getKernels());
+        }
+        else
+        {
+          sprintf(buff, "C:% 05.2f gn K:% 05.1f", g_scale.getWeight(), g_scale.getKernels());
+        }
       }
+      pad(buff);
       g_lcd.print(buff);
       _clear_disp = false;
       break;
@@ -298,7 +326,32 @@ void displayUpdate()
   }
 }
 
-
+/*
+ * Pad buff out to 20 chars with trailing spaces.
+ * WARNING!!!: code assumes char * buff[21]
+ * TODO: for safety a buff length check?
+ */
+void pad(char* buff)
+{
+  if (strlen(buff) > 20)
+  {
+    DEBUGLN(F("ERROR: Display pad(), buffer overflow."));
+    DEBUGP(F("buff = '"));
+    DEBUGP(buff);
+    DEBUGLN(F("'"));
+    buff[20]=0x00;
+    return;
+  }
+  if (strlen(buff) < 20)
+  {
+    int i=strlen(buff);
+    while (i < 20)
+    {
+      buff[i++]=' ';
+    }
+    buff[20]=0x00; //null terminate
+  }
+}
 
 /*
  * Hidden system function menu

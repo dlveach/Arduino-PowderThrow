@@ -16,10 +16,12 @@
  *   - LOTS of stuff for bluetooth
  *   - Calibrate trickler speed
  *   - Clean up debug stuff
- *   - Evaluate headers, possible circular deps, possible refactoring
+ *   - Evaluate headers, possible circular deps, possible refactoring.
+ *   - Impliment scheduler to run LED update in another thread.
+ *   - Evaluate use of more threads, like system run loop, Display, Buttons, BlueTooth, etc.
  *   
  *   BUGFIX
- *   - format issues in display for Gram mode
+ *   - a crash during running state leaves TIC running, impliment "reset command timout"
  *   
  ***********************************************************************/
 
@@ -459,7 +461,8 @@ void startTrickler()
 /*
  * Adjust trickler speed based on Fcurve map.
  * Only executes if state is trickling.
- * Optional force, defaults to false, if true always do it.  
+ * Optional force, defaults to false, true used to start trickler
+ * when prev delta invalid. i.e. restarting trickler from a pause. 
  * Otherwise only adjust if scale delta changed from previous call.
  */
 void setTricklerSpeed(bool force)
@@ -487,15 +490,16 @@ void setTricklerSpeed(bool force)
   value = value / 100.0;
   //Serial.print("Value = ");
   //Serial.println(value);
-  //TODO: verify this is working right, should not go below decel limit
-  int new_speed = g_trickler_cal_speed * value;
+  //speed is always negative so make limit negative
+  int limit = -1 * g_config.getDecelLimit(); 
+  //Adjust speed never slowing beyond limit
+  int new_speed = ((g_trickler_cal_speed-limit)*value)+limit; 
   //Serial.print("new speed = ");
   //Serial.println(new_speed);
   if (abs(new_speed) < g_config.getDecelLimit()) 
-  { 
-    new_speed = -1 * g_config.getDecelLimit(); 
-    //Serial.print("Adusted new speed = ");
-    //Serial.println(new_speed);
+  {
+    //Shouldn't happen but just be sure not to slow beyond limit 
+    new_speed = limit; 
   }
   g_TIC_trickler.setTargetVelocity(new_speed * TIC_PULSE_MULTIPLIER);  
 }

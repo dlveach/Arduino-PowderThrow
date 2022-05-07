@@ -72,11 +72,11 @@ void setup() {
   g_mcp.pinMode(MCP_LED_YEL1_PIN, OUTPUT);
   g_mcp.pinMode(MCP_LED_BLU_PIN, OUTPUT);
   //initialize LED objects with MCP
-  g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
-  g_LED_Yel_1.init(g_mcp, MCP_LED_YEL1_PIN);
-  g_LED_Yel_2.init(g_mcp, MCP_LED_YEL2_PIN);
-  g_LED_Grn.init(g_mcp, MCP_LED_GRN_PIN);
-  g_LED_Red.init(g_mcp, MCP_LED_RED_PIN);
+//  g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
+//  g_LED_Yel_1.init(g_mcp, MCP_LED_YEL1_PIN);
+//  g_LED_Yel_2.init(g_mcp, MCP_LED_YEL2_PIN);
+//  g_LED_Grn.init(g_mcp, MCP_LED_GRN_PIN);
+//  g_LED_Red.init(g_mcp, MCP_LED_RED_PIN);
   //clear it just in case
   g_mcp.getLastInterruptPin(); 
   delay(10);
@@ -92,7 +92,8 @@ void setup() {
   DEBUGLN(FRAM_I2C_ENABLED);
   g_lcd.setCursor(0,2);
   g_lcd.print(F("FRAM initialized ..."));
-  delay (1000);
+  g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
+  //delay (500);
 
   //util_eraseFRAM(fram);
   //delay (1000);
@@ -107,7 +108,8 @@ void setup() {
   DEBUGLN(F("Config loaded."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Config loaded ...   "));
-  delay (1000);
+  g_LED_Yel_1.init(g_mcp, MCP_LED_YEL1_PIN);
+  //delay (500);
 
   // Initialize Preset Manager
   if (!g_presets.init(fram, g_config))
@@ -119,7 +121,8 @@ void setup() {
   DEBUGLN(F("Preset Manager initialized."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Presets loaded ...  "));
-  delay (1000);
+  g_LED_Yel_2.init(g_mcp, MCP_LED_YEL2_PIN);
+  //delay (500);
 
   //Initialize Powder Manager
   if (!g_powders.init(fram, g_presets.getPowderIndex()))
@@ -131,7 +134,8 @@ void setup() {
   DEBUGLN(F("Powder Manager initialized."));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Powders loaded ...  "));
-  delay (1000);
+  g_LED_Grn.init(g_mcp, MCP_LED_GRN_PIN);
+  //delay (500);
 
   //Set copied data in config from presets and powders
   char buff[NAME_LEN];
@@ -164,8 +168,10 @@ void setup() {
   DEBUGLN(F("TIC I2C drivers enabled"));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Step Drvrs enbld ..."));
-  delay (1000);
-  
+  g_LED_Red.init(g_mcp, MCP_LED_RED_PIN);
+  //delay (500);
+  g_LED_Blu.setOn();
+  updateLEDs();
   // Setup scale   
   while (!g_scale.isConnected())
   {
@@ -174,7 +180,7 @@ void setup() {
       DEBUGLN(F("Scale serial connection established."));
       g_lcd.setCursor(0,2);
       g_lcd.print(F("Scale connected.    "));
-      delay (1000);  
+      delay (500);  
       while (!g_scale.isCalibrated())
       {
         calibrateScale();
@@ -197,7 +203,7 @@ void setup() {
       g_lcd.print(F("Scale calibrated.   "));
       g_lcd.setCursor(0,3);
       g_lcd.print(F("                    "));  
-      delay (1000);
+      delay (500);
     }
     else
     {
@@ -211,18 +217,32 @@ void setup() {
       g_lcd.setCursor(0,3);
       g_lcd.print(F("                    "));
     }
-  }    
+  } 
+  g_LED_Blu.setOff();
+  updateLEDs();   
   util_setFscaleCurve(g_curve_map, g_config.getFcurveP());
   g_lcd.setCursor(0,2);
   g_lcd.print(F("FCurve generated ..."));
- 
+  delay(500);
+
+  g_LED_Blu.setOn();
+  g_LED_Yel_1.setOn();
+  g_LED_Yel_2.setOn();
+  g_LED_Grn.setOn();
+  g_LED_Red.setOn();
+  updateLEDs();
   delay(1000);
+  g_LED_Blu.setOff();
+  g_LED_Yel_1.setOff();
+  g_LED_Yel_2.setOff();
+  g_LED_Grn.setOff();
+  g_LED_Red.setOff();
+  updateLEDs();
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Setup complete.     "));
   g_lcd.setCursor(0, 3);
   g_lcd.print(F("Press any button ..."));
   dumpSystemEnv();
-  //delay(1000);
   pauseForAnyButton();
   
   g_state.setState(PTState::pt_menu);

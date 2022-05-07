@@ -51,7 +51,7 @@
 //TODO: move these to config for tuneabilty?
 #define THROWER_TRAVEL_DISTANCE 1350    //1600 pulses = 1 turn
 #define MAX_THROWER_SPEED 4000          //pulses per sec (1/8 micro step, 150rpm) 
-#define MAX_TRICKLER_SPEED -4000        //pulses per sec (1/8 micro step, 150rpm) 
+#define MAX_TRICKLER_SPEED -4000        //pulses per sec (1/8 micro step, 150rpm) MUST BE NEGATIVE
 #define THROWER_DWELL_TIME 1200         //time to dwell at end of throw & let powder drop/fill
 #define SYSTEM_LOCK_TIME 5000           //time to stay locked
 #define SYSTEM_PAUSE_TIME 1000          //time to pause & let scale settle when on target 

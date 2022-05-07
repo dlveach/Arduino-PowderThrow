@@ -79,7 +79,9 @@ void PTLed::setFlash()
 }
 
 /*
- * 
+ * Update the MCP pin state if update needed.
+ * Expects to be called regularly, like main loop or run loop.
+ * Doesn't do anything if not initialized or no update needed.
  */
 void PTLed::update()
 {
@@ -94,6 +96,10 @@ void PTLed::update()
         _needs_update = true;
       }
     }  
-    if (_needs_update) { _mcp.digitalWrite(_pin, _state); }
+    if (_needs_update) 
+    { 
+      _mcp.digitalWrite(_pin, _state);
+      _needs_update = false; 
+    }
   }
 }
