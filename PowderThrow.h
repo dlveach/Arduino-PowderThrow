@@ -1,6 +1,5 @@
 /********************************************************
  * PowderThrow.h - 
- * small change
  */
 #ifndef POWDER_THROW_DEFINITIONS_H
 #define POWDER_THROW_DEFINITIONS_H
