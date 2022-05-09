@@ -1,10 +1,4 @@
-  #define SERIAL_ENABLED    F("Serial enabled")
-  #define MCP_I2C_ERROR     F("MCP I2C comm err") 
-  #define MCP_I2C_ENABLED   F("MCP I2C Enabled")
-  #define FRAM_I2C_ENABLED  F("FRAM I2C Enabled")
-  #define FRAM_I2C_ERROR    F("FRAM I2C comm err")
-  #define LCD_I2C_ENABLED   F("LCD I2C Enabled")
-  #define LCD_I2C_ERROR     F("LCD I2C comm err: ")
+
 /*
  * Setup.ino  Arduino setup()
  */
@@ -17,7 +11,7 @@ void setup() {
   #ifdef DEBUG_SERIAL  
   Serial.begin(9600);
   while (!Serial) delay(10);
-  DEBUGLN(SERIAL_ENABLED);
+  DEBUGLN(F("Serial enabled"));
   #endif
 
   delay (500);
@@ -29,7 +23,7 @@ void setup() {
   if (error == 0) {
     g_lcd.begin(20, 4);
     delay(10);
-    DEBUGLN(LCD_I2C_ENABLED);
+    DEBUGLN(F("LCD I2C Enabled"));
     g_lcd.setBacklight(255);
     g_lcd.clear();  
     g_lcd.setCursor (0, 0);
@@ -37,7 +31,7 @@ void setup() {
     g_lcd.setCursor(0,2);
     g_lcd.print(F("System init ...     "));
   } else {
-    DEBUGP(LCD_I2C_ERROR);
+    DEBUGP(F("LCD I2C comm err: "));
     DEBUGP(error);
     while (1) delay(10);
   }  
@@ -46,10 +40,10 @@ void setup() {
   // Check for MCP expander
   if (!g_mcp.begin_I2C()) 
   {
-    DEBUGLN(MCP_I2C_ERROR);
+    DEBUGLN(F("MCP I2C comm err"));
     while (1) delay(10);
   }
-  DEBUGLN(MCP_I2C_ENABLED);
+  DEBUGLN(F("MCP I2C Enabled"));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("MCP initialized ... "));
   // MCP interrupt config.  Mirror INTA/B so only one wire required.  Active drive so INTA/B 
@@ -71,13 +65,7 @@ void setup() {
   g_mcp.pinMode(MCP_LED_YEL2_PIN, OUTPUT);
   g_mcp.pinMode(MCP_LED_YEL1_PIN, OUTPUT);
   g_mcp.pinMode(MCP_LED_BLU_PIN, OUTPUT);
-  //initialize LED objects with MCP
-//  g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
-//  g_LED_Yel_1.init(g_mcp, MCP_LED_YEL1_PIN);
-//  g_LED_Yel_2.init(g_mcp, MCP_LED_YEL2_PIN);
-//  g_LED_Grn.init(g_mcp, MCP_LED_GRN_PIN);
-//  g_LED_Red.init(g_mcp, MCP_LED_RED_PIN);
-  //clear it just in case
+  //clear MCP interrupts just in case
   g_mcp.getLastInterruptPin(); 
   delay(10);
   g_mcp.getLastInterruptPin();  //be really sure!!!
@@ -86,10 +74,10 @@ void setup() {
   Adafruit_FRAM_I2C fram = Adafruit_FRAM_I2C();
   if (!fram.begin())
   {  
-    DEBUGLN(FRAM_I2C_ERROR);
-    util_handleSystemError(FRAM_I2C_ERROR);
+    DEBUGLN(F("FRAM I2C comm err"));
+    util_handleSystemError(F("FRAM I2C comm err"));
   }
-  DEBUGLN(FRAM_I2C_ENABLED);
+  DEBUGLN(F("FRAM I2C Enabled"));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("FRAM initialized ..."));
   g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);

@@ -35,7 +35,6 @@
 #define MCP_LED_YEL2_PIN 10
 #define MCP_LED_YEL1_PIN 11
 #define MCP_LED_BLU_PIN 12
- 
 
 //TIC hardware settings
 #define TIC_PULSE_MULTIPLIER 10000      // TIC uses pulses/10,000 Seconds for speed. See TIC documentation.
