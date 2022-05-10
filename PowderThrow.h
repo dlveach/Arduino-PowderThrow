@@ -18,6 +18,9 @@
 #include "PTPowders.h"
 #include "PTLed.h"
 
+#define VERSION F("2.0")
+#define BUILD   F("(104)")
+
 //HARDWARE
 #define LCD_I2C_ADDR 0x27     // PCF8574 I2C 20x4 LCD shield (SunFounder)
 #define MCP_I2C_ADDR 0x20     // Adafruit MCP 23017 I/O expander

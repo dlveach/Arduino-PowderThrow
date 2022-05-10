@@ -3,6 +3,7 @@
  * Setup.ino  Arduino setup()
  */
 void setup() {
+  static char _lcd_buff[21];
   delay(100);
   Wire.begin();
 
@@ -27,7 +28,9 @@ void setup() {
     g_lcd.setBacklight(255);
     g_lcd.clear();  
     g_lcd.setCursor (0, 0);
-    g_lcd.print("PowderThrow 2.0");
+    sprintf(_lcd_buff, "PowderThrow %3s%5s", VERSION, BUILD);
+//    g_lcd.print("PowderThrow 2.0");
+    g_lcd.print(_lcd_buff);
     g_lcd.setCursor(0,2);
     g_lcd.print(F("System init ...     "));
   } else {

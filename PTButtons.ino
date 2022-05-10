@@ -276,13 +276,40 @@ void handleButton(int btn)
             case 2:
               toggleTrickler();
               break;
+            case 3:
+              DEBUGLN(F("TODO: testing scale calibration"));
+              g_mcp.getLastInterruptPin(); //clear any button interrupts
+              g_lcd.clear();
+              g_lcd.setCursor(0,0);
+              g_lcd.print(F("Calibrate System ..."));
+              g_lcd.setCursor(0,3);
+              g_lcd.print(F("Press any button ..."));
+              delay(500);
+              pauseForAnyButton(); //first call in calibrateScale() is skipped in this code block. Why???  HACK: added to make it work
+              calibrateScale();
+              delay(1000);
+              setThrowerHome();
+              g_scale.checkScale(); //update scale state
+              g_lcd.setCursor(0,2);
+              if (isSystemCalibrated())
+              {
+                g_lcd.print(F("System calibrated.  "));
+              }
+              else
+              {
+                g_lcd.print(F("Calibrated Failed.  "));
+              }
+              g_lcd.setCursor(0,3);
+              g_lcd.print(F("Press any button ..."));
+              pauseForAnyButton();  
+              break;
           }
           break;
         case BTN_UP:
           if (--g_cur_line < 0) { g_cur_line = 0; }
           break;
         case BTN_DOWN:
-          if (++g_cur_line > 2) { g_cur_line = 2; }
+          if (++g_cur_line > 3) { g_cur_line = 3; }
           break;
       }      
       break;

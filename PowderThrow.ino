@@ -88,6 +88,8 @@ void runSystem()
     g_LED_Red.setOff();  
     return;  
   }
+
+  //TODO: pust user resp dialogs in the next two checks and kick out to menu !!!
   
   g_scale.checkScale();
   if (!g_scale.isConnected()) 
@@ -100,15 +102,33 @@ void runSystem()
     displayUpdate();
     return; 
   }   
-  
-  if (g_scale.getCondition() == PTScale::undef) 
+
+  if (!isSystemCalibrated()) 
   {
-    DEBUGLN(F("RunSystem(); Scale not ready. State == undef"));
-    delay(1000);  //DEBUGGING
+    //TODO: best way to handle this?
+    DEBUGLN(F("System not calibrated while running"));
+    stopAll();
+    g_state.setState(PTState::pt_ready);  // TODO: should we kick out to the menu?
+    g_display_changed = true; 
+    displayUpdate();
+    return; 
+  }
+
+  int scale_cond = g_scale.getCondition();
+
+  if (scale_cond == PTScale::undef) 
+  {
+    // TODO: Should just be a transient.  Need more testing to confirm.
+    // for now just log and return to run loop.
+    DEBUGLN(F("RunSystem(); Scale not ready. Condition == undef"));
+    //delay(1000);  //DEBUGGING
+    g_display_changed = true; 
+    displayUpdate();
     return; 
   } 
 
   //TODO: better way to handle this?  Set a system error code/state?
+  //TODO: has this ever happened?  More testing to evaluate.
   if (g_TIC_thrower.getOperationState() != TicOperationState::Normal)
   {
     DEBUGLN(F("Thrower TIC is not in operational state."));
@@ -120,9 +140,7 @@ void runSystem()
     return;
   }  
 
-  int scale_cond = g_scale.getCondition();
-
-  // First check to see if scale pan is off in a "running" state.
+  // Now check to see if scale pan is off in a "running" state.
   if (scale_cond == PTScale::pan_off)
   {
     switch (g_state.getState())
@@ -537,8 +555,8 @@ void stopAll()
  bool isSystemCalibrated()
  {
   bool cal = true;
-  //if (cal) { cal = !(g_TIC_thrower.getPositionUncertain()); }  // thrower calibrated
-  if (cal) { cal = (g_scale.getCondition() != PTScale::undef); }  // Scale calibrated  
+  if (cal) { cal = !(g_TIC_thrower.getPositionUncertain()); }  // thrower calibrated
+  if (cal) { cal = (g_scale.isCalibrated()); }  // Scale calibrated  
   return (cal);
  }
 

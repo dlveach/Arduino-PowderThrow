@@ -119,13 +119,13 @@ void displayUpdate()
       break;
     case g_state.pt_man:
       g_lcd.clear();
-      g_lcd.print(F("  Force Bump mode   "));
+      g_lcd.print(F("  Manual Bump       "));
       g_lcd.setCursor(0,1);
       g_lcd.print(F("  Throw a charge    "));
       g_lcd.setCursor(0,2);
       g_lcd.print(F("  Trickler on/off   "));
       g_lcd.setCursor(0,3);
-      g_lcd.print(F("  Home Thrower      "));
+      g_lcd.print(F("  Sys Calibration   "));
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));
       _clear_disp = true;
@@ -154,6 +154,7 @@ void displayUpdate()
       }
       _clear_disp = true;
       break;
+/*      
     case g_state.pt_cfg_bump:
       g_lcd.clear();
       g_lcd.print(F("TODO: Bmpthrsh disp "));  //TODO: used?
@@ -174,6 +175,7 @@ void displayUpdate()
       g_lcd.print(F("TODO: FcurveP disp  "));  //TODO: used?
       _clear_disp = true;
       break;
+*/      
     case g_state.pt_presets:
       g_lcd.clear();
       g_lcd.noCursor();

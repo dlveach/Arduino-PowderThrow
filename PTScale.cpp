@@ -17,12 +17,13 @@ PTScale::PTScale()
 {
   _cond = PTScale::undef;
   _connected = false;
+  _calibrated = false;
   _target = 0;
   _delta = -1;
   _weight = 0;
   _kernels = -1;
-  _off_scale_weight = 0; //not calibrated yet
-  _calibrated = false;
+  _off_scale_weight = 0; 
+  _con_fail_count = 0;
 }
 
 /*
@@ -37,10 +38,8 @@ bool PTScale::init(PTState s, PTConfig c)
   _ptconfig = c;
   Serial1.begin(19200, SERIAL_8N1);
   while (!Serial1);
-  delay(100);
+  delay(10);
   checkScale();
-  //delay(100);
-  //checkScale(); //First try fails, TODO: I think I fixed this, test it.
   return (_connected);
 }
 
@@ -157,15 +156,12 @@ void PTScale::zeroScale()
 /*
  * Request and process data from scale.  Sets scale state and internal 
  * data accordingly.
- * 
- * TODO: Tune SERIAL_TIMEOUT.
  */
 void PTScale::checkScale()
 {  
   byte idx = 0; // Index into array; where to store the character
   char in_char = -1; // The character read
   char serial_data[20]; // data buffer
-  //float tol = _ptconfig.getGnTolerance();      
   unsigned long _t;
   unsigned long timeout;
   static unsigned long _max_t = 0;
@@ -177,21 +173,30 @@ void PTScale::checkScale()
     _t = micros(); //diagnostics timer
     _serial_lock = true;
 
-    //Send data command
-    Serial1.write(_cmd_reqData, 3); //request data from scale
+    // Send data request command to the Scale
+    Serial1.write(_cmd_reqData, 3); 
     Serial1.flush();  //blocks until all data transmited    
     timeout = millis();
     while (Serial1.available() == 0)
     {
       if ((millis() - timeout) > SERIAL_TIMEOUT)
       {
-        Serial.println("Scale command response timeout!");
-        _connected = false;
+        Serial.println(F("Scale command response timeout!"));
+        _cond = PTScale::undef;
         _serial_lock = false;
+        _con_fail_count = _con_fail_count + 1;
+        if (_con_fail_count > SCALE_MAX_CON_FAILS)
+        {
+          _connected = false;
+          _calibrated = false;  // in case scale was powered off, force recalibration.
+          Serial.println(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
+        }
         return;
       }
     }
-    _connected = true;  //we got a response
+    // We got a response!
+    _connected = true;  
+    _con_fail_count = 0;
 
     //Read serial data sent back from scale
     timeout = millis();
@@ -202,6 +207,13 @@ void PTScale::checkScale()
         Serial.println("Scale read data timeout!");
         _cond = PTScale::undef;
         _serial_lock = false;
+        _con_fail_count = _con_fail_count + 1;
+        if (_con_fail_count > SCALE_MAX_CON_FAILS)
+        {
+          _connected = false;
+          _calibrated = false;  // in case scale was powered off, force recalibration.
+          Serial.println(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
+        }
         return;        
       }
       while (Serial1.available() > 0)
@@ -351,18 +363,7 @@ void PTScale::checkScale()
 }
 
 /*
-    PTState _ptstate;   // The PTState object.
-    PTConfig _ptconfig;   // The PTConfig object.
-    float _target;    // The weight target.
-    bool _connected;  // State of Serial connection to scale
-    float _delta;   // Delta to target weight.
-    float _weight;  // Current measured weight.
-    int _cond;      // Condition of the scale (PTScale::condition_t enum).
-    int _mode;      // Scale setting: Grains or Grams (read from serial).
-    boolean _serial_lock; // Mutex for Serial1 communication.
-    boolean _stable;  // True if stable or false if not.
-    float _kernels;   // #kernels of powder off target
-    float _off_scale_weight;  //weght of empty platter during calibration
+ * Diagnostic helper
  */
 void PTScale::printConfig()
 {
