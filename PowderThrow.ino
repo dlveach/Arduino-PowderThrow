@@ -502,7 +502,7 @@ void setTricklerSpeed(bool force)
   float value = g_curve_map[index];
   value = value / 100.0;
   //speed is always negative so make limit negative
-  int limit = -1 * g_config.getDecelLimit(); 
+  int limit = g_config.getDecelLimit() * TRICKLER_DIRECTION; 
   //Adjust speed never slowing beyond limit
   int new_speed = ((g_trickler_cal_speed-limit)*value)+limit; 
 

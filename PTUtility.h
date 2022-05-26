@@ -2,7 +2,7 @@
 #ifndef PTUtility_h
 #define PTUtility_h
 
-#define DEBUG_SERIAL  // uncomment for serial console debugging
+//#define DEBUG_SERIAL  // uncomment for serial console debugging
 #ifdef DEBUG_SERIAL
 #define DEBUGLN(x)  Serial.println (x)
 #define DEBUGP(x)   Serial.print (x)

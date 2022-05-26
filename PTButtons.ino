@@ -34,7 +34,10 @@ void checkButtons()
       {
         interrupted = true;
         interrupt_time = millis();
-        handleButton(g_mcp.getLastInterruptPin());
+        int btn = g_mcp.getLastInterruptPin();
+        Serial.print("Button Pressed: ");
+        Serial.println(btn);
+        handleButton(btn);
       }
     }
   }

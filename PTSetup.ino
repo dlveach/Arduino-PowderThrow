@@ -29,7 +29,6 @@ void setup() {
     g_lcd.clear();  
     g_lcd.setCursor (0, 0);
     sprintf(_lcd_buff, "PowderThrow %3s%5s", VERSION, BUILD);
-//    g_lcd.print("PowderThrow 2.0");
     g_lcd.print(_lcd_buff);
     g_lcd.setCursor(0,2);
     g_lcd.print(F("System init ...     "));
@@ -68,9 +67,11 @@ void setup() {
   g_mcp.pinMode(MCP_LED_YEL2_PIN, OUTPUT);
   g_mcp.pinMode(MCP_LED_YEL1_PIN, OUTPUT);
   g_mcp.pinMode(MCP_LED_BLU_PIN, OUTPUT);
+  g_mcp.pinMode(MCP_LED_PUR_PIN, OUTPUT);
   //clear MCP interrupts just in case
   g_mcp.getLastInterruptPin(); 
-  delay(10);
+  g_LED_Pur.init(g_mcp, MCP_LED_PUR_PIN);
+  //delay(500);
   g_mcp.getLastInterruptPin();  //be really sure!!!
 
   // Initialize FRAM
@@ -86,7 +87,7 @@ void setup() {
   g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
   //delay (500);
 
-  //util_eraseFRAM(fram);
+  //util_eraseFRAM(fram);  //TODO: a config menu option? reset to defaults?
   //delay (1000);
 
   // Initialize config
@@ -216,6 +217,7 @@ void setup() {
   g_lcd.print(F("FCurve generated ..."));
   delay(500);
 
+  //flash all the LEDs when done with setup
   g_LED_Blu.setOn();
   g_LED_Yel_1.setOn();
   g_LED_Yel_2.setOn();
