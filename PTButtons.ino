@@ -35,8 +35,8 @@ void checkButtons()
         interrupted = true;
         interrupt_time = millis();
         int btn = g_mcp.getLastInterruptPin();
-        Serial.print("Button Pressed: ");
-        Serial.println(btn);
+        //Serial.print("Button Pressed: ");
+        //Serial.println(btn);
         handleButton(btn);
       }
     }
@@ -751,6 +751,11 @@ void handleButton(int btn)
         case BTN_OK:
           //TODO: only go to menu if state: pt_ready or pt_locked
           g_state.setState(g_state.pt_menu);
+          g_LED_Blu.setOff();
+          g_LED_Yel_1.setOff();
+          g_LED_Yel_2.setOff();
+          g_LED_Grn.setOff();
+          g_LED_Red.setOff();  
           break;
       }
       break;

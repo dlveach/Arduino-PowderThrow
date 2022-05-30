@@ -6,6 +6,7 @@
 
 #include "Arduino.h"
 #include "PTScale.h"
+#include "PTUtility.h"
 
 bool _debug = false;
 bool print_diag = false;  //set true for debug diagnostics
@@ -49,6 +50,14 @@ bool PTScale::init(PTState s, PTConfig c)
 const char* PTScale::getConditionName()
 {
   return ConditionNames[_cond];
+}
+
+/*
+ * Return display friendly scale condition name
+ */
+const char* PTScale::getConditionLongName()
+{
+  return ConditionLongNames[_cond];
 }
 
 /*
@@ -181,7 +190,7 @@ void PTScale::checkScale()
     {
       if ((millis() - timeout) > SERIAL_TIMEOUT)
       {
-        Serial.println(F("Scale command response timeout!"));
+        DEBUGLN(F("Scale command response timeout!"));
         _cond = PTScale::undef;
         _serial_lock = false;
         _con_fail_count = _con_fail_count + 1;
@@ -189,7 +198,7 @@ void PTScale::checkScale()
         {
           _connected = false;
           _calibrated = false;  // in case scale was powered off, force recalibration.
-          Serial.println(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
+          DEBUGLN(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
         }
         return;
       }
@@ -204,7 +213,7 @@ void PTScale::checkScale()
     {
       if ((millis() - timeout) > SERIAL_TIMEOUT)
       {
-        Serial.println("Scale read data timeout!");
+        DEBUGLN(F("Scale read data timeout!"));
         _cond = PTScale::undef;
         _serial_lock = false;
         _con_fail_count = _con_fail_count + 1;
@@ -212,7 +221,7 @@ void PTScale::checkScale()
         {
           _connected = false;
           _calibrated = false;  // in case scale was powered off, force recalibration.
-          Serial.println(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
+          DEBUGLN(F("Scale exceeded max sequential serial comm fails. Scale disconnected."));
         }
         return;        
       }
@@ -227,7 +236,7 @@ void PTScale::checkScale()
         }
         else
         {
-          Serial.println("Serial read error, too much data in buffer!"); //TODO: handle this better?
+          DEBUGLN(F("Serial read error, too much data in buffer!")); //TODO: handle this better?
           _cond = PTScale::undef;
           _serial_lock = false;
           return;
@@ -241,10 +250,10 @@ void PTScale::checkScale()
     
     if (_debug)
     {
-      Serial.print("Bytes read: ");
-      Serial.println(idx);
-      Serial.print("Data read: ");
-      Serial.println(serial_data);      
+      DEBUGP("Bytes read: ");
+      DEBUGLN(idx);
+      DEBUGP("Data read: ");
+      DEBUGLN(serial_data);      
     }
     
     //Process scale respnse. Calculate values & state from serial data
@@ -257,11 +266,11 @@ void PTScale::checkScale()
         _target = _target * GM_TO_GN_FACTOR;
         _off_scale_weight = _off_scale_weight * GM_TO_GN_FACTOR;
         /*
-        Serial.println("Change GN -> MG");
-        Serial.print("_target = ");
-        Serial.println(_target);
-        Serial.print("_off_scale_weight = ");
-        Serial.println(_off_scale_weight);
+        DEBUGLN("Change GN -> MG");
+        DEBUGP("_target = ");
+        DEBUGLN(_target);
+        DEBUGP("_off_scale_weight = ");
+        DEBUGLN(_off_scale_weight);
         */
       }
       _mode = SCALE_MODE_GRAM;
@@ -274,11 +283,11 @@ void PTScale::checkScale()
         _target = _target / GM_TO_GN_FACTOR;
         _off_scale_weight = _off_scale_weight / GM_TO_GN_FACTOR;
         /*
-        Serial.println("Change MG -> GN");
-        Serial.print("_target = ");
-        Serial.println(_target);
-        Serial.print("_off_scale_weight = ");
-        Serial.println(_off_scale_weight);
+        DEBUGLN("Change MG -> GN");
+        DEBUGP("_target = ");
+        DEBUGLN(_target);
+        DEBUGP("_off_scale_weight = ");
+        DEBUGLN(_off_scale_weight);
         */
       }
       _mode = SCALE_MODE_GRAIN;
@@ -353,8 +362,8 @@ void PTScale::checkScale()
       if ((millis() - _diag_time) > 1000)
       {
         _diag_time = millis();
-        Serial.print("Max Micros spent in checkScale() this period: ");
-        Serial.println(micros() - _t);
+        DEBUGP("Max Micros spent in checkScale() this period: ");
+        DEBUGLN(micros() - _t);
         _max_t = 0;    
       }
     }
@@ -369,21 +378,21 @@ void PTScale::printConfig()
 {
   //TODO: incorporate DEBUG definitions
   char buff[80];
-  Serial.println(F("Scale object data:"));
-  Serial.print(F("Scale Connected: "));
-  Serial.println(_connected);
-  Serial.print(F("Scale Target: "));
-  Serial.println(_target);
+  DEBUGLN(F("Scale object data:"));
+  DEBUGP(F("Scale Connected: "));
+  DEBUGLN(_connected);
+  DEBUGP(F("Scale Target: "));
+  DEBUGLN(_target);
   sprintf(buff, "Scale grain tolerance: %8.6f", _ptconfig.getGnTolerance()); 
-  Serial.println(buff);
+  DEBUGLN(buff);
   sprintf(buff, "Scale milligram tolerance: %8.6f", _ptconfig.getGnTolerance() * GM_TO_GN_FACTOR); 
-  Serial.println(buff);
-  Serial.print(F("Scale Condition: "));
-  Serial.println(getConditionName());
-  Serial.print(F("Scale Mode: "));
-  Serial.println(getModeName());
-  Serial.print(F("Scale Off Scale Weight: "));
-  Serial.println(_off_scale_weight);
-  Serial.print(F("Scale is calibrated: "));
-  Serial.println(isCalibrated());
+  DEBUGLN(buff);
+  DEBUGP(F("Scale Condition: "));
+  DEBUGLN(getConditionName());
+  DEBUGP(F("Scale Mode: "));
+  DEBUGLN(getModeName());
+  DEBUGP(F("Scale Off Scale Weight: "));
+  DEBUGLN(_off_scale_weight);
+  DEBUGP(F("Scale is calibrated: "));
+  DEBUGLN(isCalibrated());
 }

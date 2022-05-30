@@ -34,16 +34,26 @@
  * The main loop
  */
 void loop() {
-  
-  //checkBlueTooth();  //TODO: lots in this area
   checkButtons();
   runSystem();
+  checkBLE();
   updateLEDs();
 }
 
 /*
+ * BLE stuffs
+ */
+void checkBLE()
+{
+  BLE.poll(); 
+  if (BLE.connected()) 
+  {
+    updateBLEData();
+  }
+}
+
+/*
  * System run state logic
- *  
  */
 void runSystem()
 {
@@ -71,6 +81,8 @@ void runSystem()
     return; //not time to run yet
   }
 
+  g_scale.checkScale();
+
   //If not in a running state, do nothing
   int s = g_state.getState();
   if (!((s == PTState::pt_ready) ||
@@ -80,18 +92,14 @@ void runSystem()
       (s == PTState::pt_paused) ||
       (s == PTState::pt_locked)))
   {
-    //Not in running state, turn LEDs off and exit
-    g_LED_Blu.setOff();
-    g_LED_Yel_1.setOff();
-    g_LED_Yel_2.setOff();
-    g_LED_Grn.setOff();
-    g_LED_Red.setOff();  
+    //Not in running state, exit
     return;  
   }
 
   //TODO: pust user resp dialogs in the next two checks and kick out to menu !!!
   
-  g_scale.checkScale();
+  //g_scale.checkScale();  //TODO: try moving this up before state check so scale updates during calibration etc.
+
   if (!g_scale.isConnected()) 
   { 
     DEBUGLN(F("Scale not connected while in running state, stop all."));
@@ -525,7 +533,7 @@ void bumpTrickler()
   {
     _last_bump = millis();
     int pos = g_TIC_trickler.getCurrentPosition();
-    g_TIC_trickler.setTargetPosition(pos - BUMP_DISTANCE);
+    g_TIC_trickler.setTargetPosition(pos + BUMP_DISTANCE);
   }
 }
 

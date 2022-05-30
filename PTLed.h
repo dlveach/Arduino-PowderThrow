@@ -15,9 +15,11 @@ class PTLed
     void init(Adafruit_MCP23X17 mcp, int _pin);
     void setOn();
     void setOff();
+    void toggle();
     void setFlash(int rate=FLASH_RATE);
     void update();
-    
+    int getState();
+        
   private:
     //vars
     Adafruit_MCP23X17 _mcp;

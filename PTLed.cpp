@@ -16,6 +16,7 @@ PTLed::PTLed()
 
 /*
  * Initialize the PTled object with MCP device and pin number. 
+ * NOTE: Intended to be called during setup(), before main loop.
  */
 void PTLed::init(Adafruit_MCP23X17 mcp, int pin) 
 {
@@ -77,6 +78,32 @@ void PTLed::setFlash(int rate)
       _needs_update = true;
     }
   }
+}
+
+/*
+ *  
+ */
+void PTLed::toggle()
+{
+  if (_initialized)
+  {
+    if (!_flashing) 
+    {
+      _state = !_state;
+      _needs_update = true;
+    }
+  }  
+}
+
+/*
+ *  
+ */
+int PTLed::getState()
+{
+  if (_initialized)
+  {
+    return _state;
+  }  
 }
 
 /*

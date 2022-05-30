@@ -24,14 +24,15 @@ void setup() {
   if (error == 0) {
     g_lcd.begin(20, 4);
     delay(10);
-    DEBUGLN(F("LCD I2C Enabled"));
     g_lcd.setBacklight(255);
     g_lcd.clear();  
     g_lcd.setCursor (0, 0);
     sprintf(_lcd_buff, "PowderThrow %3s%5s", VERSION, BUILD);
-    g_lcd.print(_lcd_buff);
     g_lcd.setCursor(0,2);
     g_lcd.print(F("System init ...     "));
+    g_lcd.print(_lcd_buff);
+    DEBUGLN(_lcd_buff); 
+    DEBUGLN(F("LCD I2C Enabled"));
   } else {
     DEBUGP(F("LCD I2C comm err: "));
     DEBUGP(error);
@@ -217,35 +218,47 @@ void setup() {
   g_lcd.print(F("FCurve generated ..."));
   delay(500);
 
+  //initialize BLE
+  initBLE();
+  delay(500);
+
   //flash all the LEDs when done with setup
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("Setup complete.     "));
+  g_lcd.setCursor(0, 3);
+  g_lcd.print(F("Press any button ..."));
   g_LED_Blu.setOn();
   g_LED_Yel_1.setOn();
   g_LED_Yel_2.setOn();
   g_LED_Grn.setOn();
   g_LED_Red.setOn();
   updateLEDs();
-  delay(1000);
+  pauseForAnyButton();
   g_LED_Blu.setOff();
   g_LED_Yel_1.setOff();
   g_LED_Yel_2.setOff();
   g_LED_Grn.setOff();
   g_LED_Red.setOff();
   updateLEDs();
-  g_lcd.setCursor(0,2);
-  g_lcd.print(F("Setup complete.     "));
-  g_lcd.setCursor(0, 3);
-  g_lcd.print(F("Press any button ..."));
-  dumpSystemEnv();
-  pauseForAnyButton();
   
+  //DEBUGGING
+  dumpSystemEnv();
+  delay(10);
+  Serial.print(F("Compile date: "));
+  Serial.println(__DATE__);
+  delay(10);
+  Serial.print(F("Compile time: "));
+  Serial.println(__TIME__);     
+
+  // go to menu screen  
+  g_mcp.getLastInterruptPin();  //clear MCP interrupts one last time, just in case
   g_state.setState(PTState::pt_menu);
   g_display_changed = true;
   displayUpdate();
-  g_mcp.getLastInterruptPin();  //clear it again, just in case
 }
 
 /*
- * 
+ * DEBUG 
  */
 void dumpSystemEnv()
 {
