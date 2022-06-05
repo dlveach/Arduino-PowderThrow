@@ -56,7 +56,7 @@
 #define TRICKLER_DIRECTION 1            //positive (1) for forward, negative (-1) for reverse
 #define THROWER_TRAVEL_DISTANCE -1350   //1600 pulses = 1 turn
 #define MAX_THROWER_SPEED 4000          //pulses per sec (1/8 micro step, 150rpm) 
-#define MAX_TRICKLER_SPEED 2500         //pulses per sec (1/8 micro step)
+#define MAX_TRICKLER_SPEED 3000         //pulses per sec (1/8 micro step)
 #define THROWER_DWELL_TIME 1200         //time to dwell at end of throw & let powder drop/fill
 #define SYSTEM_LOCK_TIME 5000           //time to stay locked
 #define SYSTEM_PAUSE_TIME 1000          //time to pause & let scale settle when on target 
@@ -65,6 +65,8 @@
 
 //GUI config edit settings
 #define DECEL_THRESH_INC 0.1
+#define DECEL_THRESH_INC_LIMIT 1.5
+#define DECEL_THRESH_DEC_LIMIT 0.5
 #define DECEL_LIMIT_INC 100
 #define DECEL_LIMIT_INC_LIMIT 1000
 #define DECEL_LIMIT_DEC_LIMIT 100
@@ -98,10 +100,10 @@ PTLed g_LED_Grn;
 PTLed g_LED_Red;
 PTLed g_LED_Pur;
 
-float g_curve_map[101];  // Curve for trickler slowdown
+float g_curve_map[101];         // Curve for trickler slowdown
 int g_trickler_cal_speed = MAX_TRICKLER_SPEED * TRICKLER_DIRECTION;  //init at max until calibrated
-int g_thrower_top_pos = -1; //not calibrated by default
-int g_thrower_bottom_pos = -1;  //not calibrated by default
+int g_thrower_top_pos = -1;     // not calibrated by default
+int g_thrower_bottom_pos = -1;  // not calibrated by default
 
 //display globals
 bool g_display_changed = false;
@@ -112,5 +114,7 @@ bool g_disp_edit = false;
 
 //function prototypes
 void setTricklerSpeed(bool force=false);
+void updateBLEData(bool force=false);
+void displayUpdate();
 
 #endif  // POWDER_THROW_DEFINITIONS_H

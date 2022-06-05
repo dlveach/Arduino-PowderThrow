@@ -8,8 +8,8 @@ void displayUpdate()
 {
 //                        12345678901234567890
   static char buff[21] = "                    ";
-  static char fmt_line2[21] = "                    ";
-  static char fmt_line3[21] = "                    ";
+  //static char fmt_line2[21] = "                    ";
+  //static char fmt_line3[21] = "                    ";
   static bool _clear_disp = true; //static flag to avoid clear on every state update
 
   if (!g_display_changed) return;
@@ -19,8 +19,8 @@ void displayUpdate()
     case g_state.pt_undefined:
     case g_state.pt_setup:
     case g_state.pt_error:
-    case g_state.pt_cal_scale:
-    case g_state.pt_cal_trickler:
+    case g_state.pt_man_cal_scale:
+    case g_state.pt_man_cal_trickler:
       _clear_disp = true;
       //Direct display output states. Nothing to do here.  Generally shouldn't happen.
       DEBUGP(F("WARN: "));
@@ -119,13 +119,13 @@ void displayUpdate()
       break;
     case g_state.pt_man:
       g_lcd.clear();
-      g_lcd.print(F("  Manual Bump       "));
-      g_lcd.setCursor(0,1);
       g_lcd.print(F("  Throw a charge    "));
-      g_lcd.setCursor(0,2);
+      g_lcd.setCursor(0,1);
       g_lcd.print(F("  Trickler on/off   "));
+      g_lcd.setCursor(0,2);
+      g_lcd.print(F("  Calibrate Trickler"));
       g_lcd.setCursor(0,3);
-      g_lcd.print(F("  Sys Calibration   "));
+      g_lcd.print(F("  Calibrate Scale   "));
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));
       _clear_disp = true;

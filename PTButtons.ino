@@ -172,7 +172,9 @@ void handleButton(int btn)
             switch (g_cur_line)
             {
               case 0:
-                g_config.setDecelThreshold(g_config.getDecelThreshold() + DECEL_THRESH_INC);
+                if (g_config.getDecelThreshold() < (DECEL_THRESH_INC_LIMIT + DECEL_THRESH_INC)) {
+                  g_config.setDecelThreshold(g_config.getDecelThreshold() + DECEL_THRESH_INC);
+                }
                 break;
               case 1:
                 if (g_config.getDecelLimit() < (DECEL_LIMIT_INC_LIMIT + DECEL_LIMIT_INC))
@@ -210,7 +212,8 @@ void handleButton(int btn)
             switch (g_cur_line)
             {
               case 0:
-                if ((g_config.getDecelThreshold() - 2*DECEL_THRESH_INC) > g_config.getBumpThreshold())
+                //if ((g_config.getDecelThreshold() - 2*DECEL_THRESH_INC) > g_config.getBumpThreshold())
+                if ((g_config.getDecelThreshold() - DECEL_THRESH_INC) > DECEL_THRESH_DEC_LIMIT) 
                 {
                   g_config.setDecelThreshold(g_config.getDecelThreshold() - DECEL_THRESH_INC);
                 }
@@ -271,20 +274,20 @@ void handleButton(int btn)
           switch (g_cur_line)
           {
             case 0:
-              DEBUGLN(F("TODO: force a bump?"));
-              break;
-            case 1:
               manualThrow();
               break;
-            case 2:
+            case 1:
               toggleTrickler();
               break;
+            case 2:
+              calibrateTrickler(true);  // start it
+              break;
             case 3:
-              DEBUGLN(F("TODO: testing scale calibration"));
+              //TODO: some code cleanup to do here?  Move to fn in PowderThrow.ino
               g_mcp.getLastInterruptPin(); //clear any button interrupts
               g_lcd.clear();
               g_lcd.setCursor(0,0);
-              g_lcd.print(F("Calibrate System ..."));
+              g_lcd.print(F("Calibrate Scale ..."));
               g_lcd.setCursor(0,3);
               g_lcd.print(F("Press any button ..."));
               delay(500);
@@ -296,11 +299,11 @@ void handleButton(int btn)
               g_lcd.setCursor(0,2);
               if (isSystemCalibrated())
               {
-                g_lcd.print(F("System calibrated.  "));
+                g_lcd.print(F("Scale calibrated.   "));
               }
               else
               {
-                g_lcd.print(F("Calibrated Failed.  "));
+                g_lcd.print(F("Scale Cal Failed.   "));
               }
               g_lcd.setCursor(0,3);
               g_lcd.print(F("Press any button ..."));
@@ -315,6 +318,9 @@ void handleButton(int btn)
           if (++g_cur_line > 3) { g_cur_line = 3; }
           break;
       }      
+      break;
+    case g_state.pt_man_cal_trickler:
+        calibrateTrickler(false);  // Stop it
       break;
     case g_state.pt_presets:
       switch (btn)

@@ -350,20 +350,6 @@ void calibrateScale()
 }
 
 /*
- * During setup.  (Move to manual?)
- * TODO: impliment
- */
-void calibrateTrickler()
-{
-  DEBUGLN(F("TODO: calibrate trickler"));
-  g_lcd.setCursor(0,2);
-  g_lcd.print(F("TODO: cal trickler, "));
-  g_lcd.setCursor(0,3);
-  g_lcd.print(F("Press any button ..."));
-  pauseForAnyButton();
- }
-
-/*
  * During setup, 
  * DeEnergize setpper, have user manually move thrower to 
  * home pos and set in thrower controller.  Engergize stepper.

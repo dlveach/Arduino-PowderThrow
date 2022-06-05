@@ -34,9 +34,19 @@ bool PTConfig::init(Adafruit_FRAM_I2C fram)
   if (!loadConfig())
   {
     util_handleSystemError(F("Can't load config."));
+    _updateBLE = false;
     return (false);
   }
+  _updateBLE = true;
   return (true);
+}
+
+/*
+ * 
+ */
+bool PTConfig::isBLEUpdateNeeded()
+{
+  return (_updateBLE);
 }
 
 /*
@@ -70,6 +80,7 @@ void PTConfig::setPreset(int value)
 {
   _config_buffer._config_data.preset = value;
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -87,6 +98,7 @@ void PTConfig::setFcurveP(float value)
 {
   _config_buffer._config_data.fscaleP = value;
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -104,6 +116,7 @@ void PTConfig::setDecelThreshold(float value)
 {
   _config_buffer._config_data.decel_threshold = value;
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -121,6 +134,7 @@ void PTConfig::setBumpThreshold(float value)
 {
   _config_buffer._config_data.bump_threshold = value;
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -138,6 +152,7 @@ void PTConfig::setDecelLimit(int value)
 {
   _config_buffer._config_data.decel_limit = value;
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -155,6 +170,7 @@ void PTConfig::setGnTolerance(float value)
 {
   _config_buffer._config_data.gn_tolerance = value;  
   _dirty = true;
+  _updateBLE = true;
 }
 
 /*
@@ -280,6 +296,17 @@ boolean PTConfig::saveConfig(boolean init)
   return (false);
 }
 
+/*
+ * 
+ */
+ bool PTConfig::updateBLE(BLECharacteristic BLEChar)
+ {
+   if (BLEChar.writeValue(_config_buffer.raw_data, CONFIG_DATA_SIZE)) {
+     _updateBLE = false;
+     return (true);
+   }
+   return (false);
+ }
 
 /*******************
  * PRIVATE

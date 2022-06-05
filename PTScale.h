@@ -18,7 +18,7 @@
 
 static float GM_TO_GN_FACTOR = 0.06479891; // grams per grain conversion factor
 static const char* ConditionNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Cls","On Tgt","Over Tgt","Undef"};
-static const char* ConditionLongNames[] = {"Not Ready","Zero","Pan Off","Under Target","Close to Target","Very Close to Target","On Target","Over Target","Undefined"};
+static const char* ConditionLongNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Close","On Target","Over Target","Undefined"};
 static const char* ModeNames[] = {"Milligram","Grain"};
 
 /*

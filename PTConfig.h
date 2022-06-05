@@ -9,6 +9,7 @@
 
 #include "Arduino.h"
 #include <Adafruit_FRAM_I2C.h>
+#include <ArduinoBLE.h>
 
 #define NAME_LEN 16 //avoiding cirlular dep. Dup defs in PTPresets.h and PTPowders.h  TODO: move to top level .h?
 
@@ -50,6 +51,8 @@ class PTConfig
     // Constructor
     PTConfig();
 
+    // Vars
+
     // Getters/Setters for FRAM stored data
     int getVersion();
     float getDecelThreshold();
@@ -67,6 +70,7 @@ class PTConfig
     int getPreset();
     void setPreset(int);
     bool isDirty();
+    bool isBLEUpdateNeeded();
 
     // Indirect (copied preset/powder) data access 
     char* getPresetName();
@@ -85,6 +89,7 @@ class PTConfig
     boolean saveConfig(boolean = false);
     boolean validateData();
     void printConfig();
+    bool updateBLE(BLECharacteristic);
     
   private:
     // Vars
@@ -92,6 +97,7 @@ class PTConfig
     ConfigDataStorage _defaults = {0, -1.5, 1.0, 0.10, 4000, 0.021, 0.002, CONFIG_VERSION};
     Adafruit_FRAM_I2C _fram;
     bool _dirty;    // config data changed, needs saving
+    bool _updateBLE;  // config data changed, update BLE
 
     //Internal data from current preset/powder
     int _preset;            // current preset index

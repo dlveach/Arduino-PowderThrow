@@ -9,10 +9,13 @@
 #ifndef PTState_h
 #define PTState_h
 
-static const char* StateNames[] = {"Undefined","Error","Setup","Cal Scale","Cal Trickler","Ready","Throwing",
-    "Trickling","Bumping","Paused","Locked","Menu","Config","Cfg Bump",
-    "Cfg Decel Lim","Cfg Decel Tgt","Cfg FCurve","Manual","Man Throw","Man Trickle","Man Bump",
-    "Powders","Edit Powder","Presets","Edit Preset",};
+static const char* StateNames[] = {"Undefined","Error","Setup","Ready","Throwing",
+  "Trickling","Bumping","Paused","Locked","Menu","Config","Manual","Man Throw",
+  "Man Trickle","Cal Trickler", "Cal Scale","Powders","Edit Powder","Presets","Edit Preset",};
+    
+static const char* StateLongNames[] = {"Undefined","Error","Setup","Ready","Throwing",
+  "Trickling","Bumping","Paused","Locked","Menu","Config","Manual","Manual Throw",
+  "Manual Trickle","Calibrate Trickler", "Calibrate Scale","Powders","Edit Powder","Presets","Edit Preset",};
     
 class PTState
 {
@@ -22,8 +25,6 @@ class PTState
       pt_undefined,
       pt_error,
       pt_setup,
-      pt_cal_scale,
-      pt_cal_trickler,
       pt_ready,
       pt_throwing,
       pt_trickling,
@@ -32,14 +33,11 @@ class PTState
       pt_locked,
       pt_menu,
       pt_cfg,
-      pt_cfg_bump,  //TODO: not used?
-      pt_cfg_dec_lim,  //TODO: not used?
-      pt_cfg_dec_tgt,  //TODO: not used?
-      pt_cfg_fcurve,  //TODO: not used?
       pt_man,
       pt_man_throw,
       pt_man_trickle,
-      pt_man_bump,
+      pt_man_cal_trickler,
+      pt_man_cal_scale,
       pt_powders,
       pt_powders_edit,
       pt_presets,
@@ -53,6 +51,7 @@ class PTState
     int setState(state_t state);
     int getState();
     const char* getStateName();
+    const char* getStateLongName();
     void setSystemMessage(String msg);
     String getSystemMessage();
     void BtnOK();

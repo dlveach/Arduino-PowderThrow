@@ -48,7 +48,7 @@ void checkBLE()
   BLE.poll(); 
   if (BLE.connected()) 
   {
-    updateBLEData();
+    updateBLEData(false);
   }
 }
 
@@ -647,3 +647,151 @@ void toggleTrickler()
     _running = true;
   }
 }
+
+/*
+ * Calibrate trickler flow rate
+ * runMe is true when called to start (manual menu)
+ * runMe is false when button pressed during calibration (A recursive call) and  
+ *  triggers exit (setting static var _running to false, exiting calibration loop.
+ * Will time out and auto exit after a number of samples or if successfully achieving
+ *  a stable calibration before then.
+ * Updates global calibration speed if successful.
+ */
+ #define SUCCESS_COUNT 10
+void calibrateTrickler(bool runMe)
+{
+  static bool _running = false;
+  float flow_rate = 0.0;
+  int test_speed = g_trickler_cal_speed;
+  unsigned long last_check = 0;
+  float last_weight = 0;
+  int count = 0; 
+  float tot = 0.0;
+  int max = 50;
+  float avg = 0;
+  char* buff = new char[41];
+  float weight = 0;
+  float diff = 0;
+  float* samples = new float[5];
+  int good_count = 0;
+  bool success = false;
+  if (!runMe) {
+    // button pressed during calibration
+    _running = false;
+    return; 
+  }
+  _running = true;
+  g_state.setState(g_state.pt_man_cal_trickler);
+  g_lcd.clear();
+  g_lcd.setCursor(0,0);
+  g_lcd.print("Calibrate Trickler:");
+  if (g_scale.getMode() == SCALE_MODE_GRAM) {
+    g_lcd.setCursor(0,1);
+    g_lcd.print("Scale not in Grains ");
+    g_lcd.setCursor(0,2);
+    g_lcd.print("Cannot calibrate    ");
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+    pauseForAnyButton();
+    g_state.setState(g_state.pt_man); 
+    g_display_changed = true;
+    return;
+  }
+  g_lcd.setCursor(0,1);
+  g_lcd.print("Sample:");
+  g_lcd.setCursor(0,2);
+  sprintf(buff, "Speed: %04d", test_speed);
+  g_lcd.print(buff);
+  g_lcd.setCursor(0,3);
+  g_lcd.print("Avg gn/s:");
+  g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);
+  delay(2000);   
+  while (_running) {
+    if ((millis() - last_check) > 2000) {
+      last_check = millis();
+      if (count++ > max) { 
+        _running = false; 
+        break;
+      }
+      g_lcd.setCursor(8,1);
+      sprintf(buff, "%d", count);
+      g_lcd.print(buff);
+      g_lcd.setCursor(7,2);
+      sprintf(buff, "%04d", test_speed);
+      g_lcd.print(buff);
+      g_scale.checkScale();  // what if scale comm fails or not in good state?
+      weight = g_scale.getWeight();  
+      diff = weight - last_weight;
+      last_weight = weight;
+      if (diff <= 0) {
+        //This should never happen, just here for testing.
+        Serial.println("Diff below zero, skipping sample!!!");
+      } else {
+        //Calculate moving average of 5 samples.
+        tot = 0;
+        for (int i=0; i<4; i++) {
+          samples[i]=samples[i+1];
+          tot = tot + samples[i];
+        }
+        samples[4] = diff;
+        tot = tot + diff;
+        avg = tot/5;
+        //Start tuning when moving avg window is full
+        if (count >= 5) {
+          flow_rate = avg;
+          g_lcd.setCursor(9,3);
+          sprintf(buff, "%6.3f", avg);
+          g_lcd.print(buff);
+          if (avg > 1.1) {
+            good_count = 0;            
+            test_speed = test_speed - 50;
+            g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);            
+          } else if (avg < 0.9) {
+            good_count = 0;            
+            test_speed = test_speed + 50;
+            g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);            
+          } else {
+            good_count++;
+          }
+        }
+      }
+      if (good_count == SUCCESS_COUNT) {
+        _running = false; 
+        success = true;
+        break;
+      }
+    }
+    // Call checkButtons() here to update running state if button pressed
+    checkButtons();
+    //checkBLE()  TODO: when there's a calibrate display in the phone app
+  }
+  g_TIC_trickler.setTargetVelocity(0);
+  g_lcd.clear();
+  g_lcd.setCursor(0,0);
+  g_lcd.print("Calibrate Trickler:");
+  if (success) {
+    g_trickler_cal_speed = test_speed;
+    g_lcd.setCursor(0,1);
+    g_lcd.print("Calibration success!");
+    g_lcd.setCursor(0,2);
+    sprintf(buff, "New speed: %04d", g_trickler_cal_speed);
+    g_lcd.print(buff);
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+  } else {
+    g_lcd.setCursor(0,1);
+    g_lcd.print("Calibration failed! ");
+    g_lcd.setCursor(0,2);
+    g_lcd.print("Trickler unchanged. ");
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+    pauseForAnyButton();
+    }
+  g_state.setState(g_state.pt_man);
+  g_display_changed = true;
+}
+  
+
