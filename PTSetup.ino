@@ -139,6 +139,7 @@ void setup() {
   g_powders.getPowderName(buff);
   g_config.setPowderName(buff);
   g_config.setKernelFactor(g_powders.getPowderFactor());
+  g_config.setTargetWeight(g_presets.getPresetChargeWeight());
   
   // Enable and configure TIC stepper motor drivers
   g_TIC_thrower.setProduct(TicProduct::T500);

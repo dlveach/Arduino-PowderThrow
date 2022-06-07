@@ -99,12 +99,12 @@ bool PresetManager::getPresetName(char* buff)
 }
 
 /*
- * Copy PRESET_NAME_LEN chars from buff to loaded buffer's name.
+ * Copy NAME_LEN chars from buff to loaded buffer's name.
  * ERROR and return false if length of buff too long.
  */
 bool PresetManager::setPresetName(char* buff)
 {
-  if (strlen(buff) > PRESET_NAME_LEN)
+  if (strlen(buff) > NAME_LEN)
   {
     DEBUGP(F("ERROR: string too long. "));
     DEBUGLN(__LINE__);

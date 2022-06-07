@@ -237,6 +237,22 @@ void PTConfig::setKernelFactor(float value)
 }
 
 /*
+ *
+ */
+void PTConfig::setTargetWeight(float value)
+{
+  _target_weight = value;
+}
+
+/*
+ *
+ */
+float PTConfig::getTargetWeight()
+{
+  return (_target_weight);
+}
+
+/*
  * Reset system config to current config buffer.
  */
 boolean PTConfig::resetConfig()

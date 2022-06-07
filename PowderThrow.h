@@ -80,6 +80,9 @@
 #define RUN_INTERVAL 50                 //main loop system run interval, 50ms
 #define SERIAL_TIMEOUT 100              //Millis before serial comm timeout
 
+//MISC
+#define NAME_LEN 16
+
 /*
  * System wide globals
  */

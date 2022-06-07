@@ -16,7 +16,7 @@
 //0 base, 50 presets
 #define MAX_PRESETS 49 
 #define PRESETS_ADDR_BASE CONFIG_DATA_SIZE + 8
-#define PRESET_NAME_LEN 16 //TODO: consider consolidating to a common NAME_LEN
+//#define NAME_LEN 16 //TODO: consider consolidating to a common NAME_LEN
 
 /*
  * Type def for PresetData.  
@@ -25,7 +25,7 @@
 typedef struct _preset_data_t {
   float charge_weight;    //grains
   int powder_index;       //index into powder list
-  char preset_name[PRESET_NAME_LEN+1];   
+  char preset_name[NAME_LEN+1];   
   int preset_version;
 } PresetData;
 #define PRESET_DATA_SIZE sizeof(_preset_data_t)

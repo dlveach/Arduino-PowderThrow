@@ -101,6 +101,7 @@ void handleButton(int btn)
             g_powders.getPowderName(buff);
             g_config.setPowderName(buff);
             g_config.setKernelFactor(g_powders.getPowderFactor());
+            g_config.setTargetWeight(g_presets.getPresetChargeWeight());
             g_state.setState(g_state.pt_ready);
           }
           else
@@ -402,7 +403,7 @@ void handleButton(int btn)
               if (g_disp_edit)
               {
                 //Move cursor right on name
-                if (g_cursor_pos < PRESET_NAME_LEN+2) { g_cursor_pos++; }
+                if (g_cursor_pos < NAME_LEN+2) { g_cursor_pos++; }
                 else { return; }
               }
               else
@@ -657,7 +658,7 @@ void handleButton(int btn)
               if (g_disp_edit)
               {
                 //Move cursor right on name
-                if (g_cursor_pos < POWDER_NAME_LEN+2) { g_cursor_pos++; }
+                if (g_cursor_pos < NAME_LEN+2) { g_cursor_pos++; }
                 else { return; }
               }
               else

@@ -75,8 +75,8 @@ class PTConfig
     // Indirect (copied preset/powder) data access 
     char* getPresetName();
     void setPresetName(char*);
-    float getTargetWeight();
-    void setTargetWeight(float);
+    float getTargetWeight();        //TODO: eval code for inconsistency with target in g_scale
+    void setTargetWeight(float);    //TODO: eval code for inconsistency with target in g_scale
     char* getPowderName();
     void setPowderName(char*);
     float getKernelFactor();

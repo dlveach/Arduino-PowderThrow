@@ -66,12 +66,12 @@ bool PowderManager::getPowderName(char* buff)
 }
 
 /*
- * Copy POWDER_NAME_LEN chars from buff to loaded buffer's name.
+ * Copy NAME_LEN chars from buff to loaded buffer's name.
  * ERROR and return false if length of buff too long.
  */
 bool PowderManager::setPowderName(char* buff)
 {
-  if (strlen(buff) > POWDER_NAME_LEN)
+  if (strlen(buff) > NAME_LEN)
   {
     DEBUGP(F("ERROR: string too long. "));
     DEBUGLN(__LINE__);
