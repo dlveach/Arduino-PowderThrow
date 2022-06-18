@@ -20,7 +20,7 @@
 #include "PTLed.h"
 
 #define VERSION F("2.0")
-#define BUILD   F("(106)")
+#define BUILD   F("107")
 
 //HARDWARE
 #define LCD_I2C_ADDR 0x27     // PCF8574 I2C 20x4 LCD shield (SunFounder)
@@ -75,6 +75,10 @@
 #define FCURVEP_INC_LIMIT 10.0
 #define FCURVEP_DEC_LIMIT -10.0
 
+//LCD stuffs
+#define LCD_UP_ARROW (char) 0x01
+#define LCD_DOWN_ARROW (char) 0x02
+
 //SYSTEM RUN 
 #define DEBOUNCE 500                    //Button debounce time millis
 #define RUN_INTERVAL 50                 //main loop system run interval, 50ms
@@ -114,6 +118,7 @@ int g_cur_line = 0;
 int g_prev_line = 0;
 int g_cursor_pos = 0;
 bool g_disp_edit = false;
+int g_disp_page = 1;  
 
 //function prototypes
 void setTricklerSpeed(bool force=false);

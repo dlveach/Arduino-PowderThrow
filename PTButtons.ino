@@ -79,73 +79,109 @@ void pauseForAnyButton()
  * Handle a button pressed based on the MCP pin number
  * the button is on.
  * 
- * TODO: condider moving button logic into the associated objects, esp config?
+ * TODO: condider moving button logic into the associated objects, esp config? (in work)
  */
 void handleButton(int btn)
 {  
   static bool _regen_fcurve = false;  //flag to trigger Fcurve regen if parameters changed in config.
   switch (g_state.getState())
   {
+    ////////////////////////////
+    // MENU
+    ////////////////////////////
     case g_state.pt_menu:
       switch (btn)
       {
         case BTN_LEFT:
-          if (g_presets.isDefined() && g_powders.isPowderDefined())
-          {
-            g_scale.setTarget(g_presets.getPresetChargeWeight());
-            char buff[NAME_LEN];
-            buff[0] = 0x00;
-            g_presets.getPresetName(buff);
-            g_config.setPresetName(buff);
-            buff[0] = 0x00;
-            g_powders.getPowderName(buff);
-            g_config.setPowderName(buff);
-            g_config.setKernelFactor(g_powders.getPowderFactor());
-            g_config.setTargetWeight(g_presets.getPresetChargeWeight());
-            g_state.setState(g_state.pt_ready);
-          }
-          else
-          {
-            DEBUGLN(F("System not ready"));
-          }
+          // Ignore
           break;
         case BTN_OK:
         case BTN_RIGHT:
-          switch (g_cur_line)
-          {
-            case 0:
-              g_state.setState(g_state.pt_man);
-              g_prev_line = g_cur_line;
-              g_cur_line = 0;
-              break;
-            case 1:
-              g_state.setState(g_state.pt_cfg);
-              g_prev_line = g_cur_line;
-              g_cur_line = 0;
-              break;
-            case 2:
-              g_state.setState(g_state.pt_presets);
-              g_prev_line = g_cur_line;
-              g_cur_line = 0;
-              break;
-            case 3:
-              g_state.setState(g_state.pt_powders);
-              g_prev_line = g_cur_line;
-              g_cur_line = 0;
-              break;
-            default:
-              DEBUGLN(F("WARN: Bad Line Number.")); //shouldn't happen
-              return;
+            if (g_disp_page == 1) {
+              switch (g_cur_line)
+              {
+                case 0:
+                  setSystemReady();
+                  break;
+                case 1:
+                  g_state.setState(g_state.pt_cfg);
+                  g_prev_line = g_cur_line;
+                  g_cur_line = 0;
+                  break;
+                case 2:
+                  g_state.setState(g_state.pt_presets);
+                  g_prev_line = g_cur_line;
+                  g_cur_line = 0;
+                  break;
+                case 3:
+                  g_state.setState(g_state.pt_powders);
+                  g_prev_line = g_cur_line;
+                  g_cur_line = 0;
+                  break;
+                default:
+                  DEBUGLN(F("WARN: Bad Line Number.")); //shouldn't happen
+                  return;
+              }
+            } else if (g_disp_page == 2) {
+              switch (g_cur_line)
+              {
+                case 0:
+                  manualThrow();
+                  break;
+                case 1:
+                  toggleTrickler();
+                  break;
+                case 2:
+                  calibrateTrickler(true);  // true == start it
+                  break;
+                case 3:
+                  menuCalibrateScale();   
+                  break;
+                default:
+                  DEBUGLN(F("WARN: Bad Line Number.")); //shouldn't happen
+                  return;
+              }
+            }
+        break;
+        case BTN_UP:
+          if (g_cur_line == 0) {
+            if (g_disp_page > 1) {
+              g_disp_page--;
+              g_cur_line = 3;
+            }
+          } else {
+            g_cur_line--;
           }
           break;
-        case BTN_UP:
-          if (--g_cur_line < 0) { g_cur_line = 0; }
-          break;
         case BTN_DOWN:
-          if (++g_cur_line > 3) { g_cur_line = 3; }
+          if (g_cur_line == 3) {
+            if (g_disp_page < 2) {
+              g_disp_page++;
+              g_cur_line = 0;
+            }
+          } else {
+            g_cur_line++;
+          }
           break;
       }
       break;
+    ////////////////////////////
+    // MANUAL: CAL TRICKLER
+    ////////////////////////////
+    case g_state.pt_man_cal_trickler:
+      switch (btn)
+      {
+        case BTN_LEFT:
+        case BTN_RIGHT:
+        case BTN_UP:
+        case BTN_DOWN:
+        case BTN_OK:
+          calibrateTrickler(false);  // any button will cancel and stop it
+      break;
+      }      
+    ////////////////////////////
+    // CONFIG
+    ////////////////////////////
     case g_state.pt_cfg:
       switch (btn)
       {
@@ -263,69 +299,11 @@ void handleButton(int btn)
           break;
       }      
       break;
-    case g_state.pt_man:
-      switch (btn)
-      {
-        case BTN_LEFT:
-          g_cur_line = g_prev_line;
-          g_state.setState(g_state.pt_menu);
-          break;
-        case BTN_OK:
-        case BTN_RIGHT:
-          switch (g_cur_line)
-          {
-            case 0:
-              manualThrow();
-              break;
-            case 1:
-              toggleTrickler();
-              break;
-            case 2:
-              calibrateTrickler(true);  // start it
-              break;
-            case 3:
-              //TODO: some code cleanup to do here?  Move to fn in PowderThrow.ino
-              g_mcp.getLastInterruptPin(); //clear any button interrupts
-              g_lcd.clear();
-              g_lcd.setCursor(0,0);
-              g_lcd.print(F("Calibrate Scale ..."));
-              g_lcd.setCursor(0,3);
-              g_lcd.print(F("Press any button ..."));
-              delay(500);
-              pauseForAnyButton(); //first call in calibrateScale() is skipped in this code block. Why???  HACK: added to make it work
-              calibrateScale();
-              delay(1000);
-              setThrowerHome();
-              g_scale.checkScale(); //update scale state
-              g_lcd.setCursor(0,2);
-              if (isSystemCalibrated())
-              {
-                g_lcd.print(F("Scale calibrated.   "));
-              }
-              else
-              {
-                g_lcd.print(F("Scale Cal Failed.   "));
-              }
-              g_lcd.setCursor(0,3);
-              g_lcd.print(F("Press any button ..."));
-              pauseForAnyButton();  
-              break;
-          }
-          break;
-        case BTN_UP:
-          if (--g_cur_line < 0) { g_cur_line = 0; }
-          break;
-        case BTN_DOWN:
-          if (++g_cur_line > 3) { g_cur_line = 3; }
-          break;
-      }      
-      break;
-    case g_state.pt_man_cal_trickler:
-        calibrateTrickler(false);  // Stop it
-      break;
+    ////////////////////////////
+    // PRESETS
+    ////////////////////////////
     case g_state.pt_presets:
-      switch (btn)
-      {
+      switch (btn) {
         case BTN_LEFT:
           g_cur_line = g_prev_line;
           g_state.setState(g_state.pt_menu);
@@ -351,86 +329,58 @@ void handleButton(int btn)
             g_config.saveConfig();
             g_cur_line = g_prev_line;
             g_state.setState(g_state.pt_menu);
-          }
-          else
-          {
-            return;
-          }
+          } else { return; }
           break;
       }      
       break;
+    ////////////////////////////
+    // PRESETS EDIT
+    ////////////////////////////
     case g_state.pt_presets_edit:
       switch (g_cur_line)
       {
-        case 0:
-          // Save or cancel edit preset
-          if (btn == BTN_OK) //save edits
-          {
-            if (g_presets.isDefined())
-            {
+        case 0:  // Save or cancel edit preset
+          if (btn == BTN_OK) {
+            if (g_presets.isDefined()) {
               g_presets.savePreset();
               g_state.setState(g_state.pt_presets);
-            }
-            else { return; } //not valid edits
+            } else { return; } 
           }
-          else if (btn == BTN_LEFT) //cancel edits
-          {
+          else if (btn == BTN_LEFT) {
             g_presets.resetCurrentPreset();
             g_state.setState(g_state.pt_presets);
-          }
-          else if (btn == BTN_DOWN) 
-          { 
+          } else if (btn == BTN_DOWN)  { 
             g_cur_line = 1;
-          }
-          else
-          {
-            return; //ignore
-          }
+          } else { return; }
           break;
         case 1:        
           // edit preset name
           switch (btn)
           {
             case BTN_LEFT:
-              if (g_disp_edit)
-              {
+              if (g_disp_edit) {
                 //Move cursor left on name
                 if (g_cursor_pos > 2) { g_cursor_pos--; }
                 else { return; }
               }
               break;
             case BTN_RIGHT:
-              if (g_disp_edit)
-              {
+              if (g_disp_edit) {
                 //Move cursor right on name
                 if (g_cursor_pos < NAME_LEN+2) { g_cursor_pos++; }
                 else { return; }
-              }
-              else
-              {
+              } else {
                 g_cursor_pos = 2;
                 g_disp_edit = true;
               }
               break;
             case BTN_UP:
-              if (g_disp_edit)
-              {
-                g_presets.incNameChar(g_cursor_pos-2);
-              }
-              else
-              {
-                g_cur_line = 0;
-              }
+              if (g_disp_edit) { g_presets.incPresetNameChar(g_cursor_pos-2); }
+              else { g_cur_line = 0; }
               break;
             case BTN_DOWN:
-              if (g_disp_edit)
-              {
-                g_presets.decNameChar(g_cursor_pos-2);
-              }
-              else
-              {
-                g_cur_line = 2;
-              }
+              if (g_disp_edit) { g_presets.decPresetNameChar(g_cursor_pos-2); }
+              else { g_cur_line = 2; }
               break;
             case BTN_OK:
               if (g_disp_edit) { g_disp_edit = false; }
@@ -442,8 +392,7 @@ void handleButton(int btn)
           switch (btn)
           {
             case BTN_LEFT:
-              if (g_disp_edit)
-              {
+              if (g_disp_edit) {
                 //Move cursor left on charge
                 if (g_cursor_pos == 14) { g_cursor_pos = 12; }
                 else if (g_cursor_pos > 10) { g_cursor_pos--; }
@@ -451,78 +400,23 @@ void handleButton(int btn)
               }
               break;
             case BTN_RIGHT:
-              if (g_disp_edit)
-              {
+              if (g_disp_edit) {
                 //Move cursor right on charge
                 if (g_cursor_pos == 12) { g_cursor_pos = 14; }
                 else if (g_cursor_pos < 12) { g_cursor_pos++; }
                 else { return; }
-              }
-              else
-              {
+              } else  {
                 g_cursor_pos = 10;
                 g_disp_edit = true;
               }
               break;
             case BTN_UP:
-              if (g_disp_edit)
-              {
-                //Increment charge
-                float val = g_presets.getPresetChargeWeight();
-                switch (g_cursor_pos)
-                {
-                  case 10:
-                    if (val <= 100) {  val = val + 100; }
-                    break;
-                  case 11:
-                    if (val <= 190) {  val = val + 10; }
-                    break;
-                  case 12:
-                    if (val <= 199) {  val = val + 1; }
-                    break;
-                  case 14:
-                    if (val < 200) {  val = val + 0.1; }
-                    break;
-                  default:
-                    DEBUGLN(F("Invalid cursor pos for edit charge weight"));
-                    return;
-                }
-                g_presets.setPresetChargeWeight(val);
-              }
-              else
-              {
-                g_cur_line = 1;
-              }
+              if (g_disp_edit) { g_presets.incPresetChargeWeight(g_cursor_pos-10); }
+              else { g_cur_line = 1; }
               break;
             case BTN_DOWN:
-              if (g_disp_edit)
-              {
-                //Decrement charge
-                float val = g_presets.getPresetChargeWeight();
-                switch (g_cursor_pos)
-                {
-                  case 10:
-                    if (val > 100.0) {  val = val - 100; }
-                    break;
-                  case 11:
-                    if (val > 10.0) {  val = val - 10; }
-                    break;
-                  case 12:
-                    if (val > 1.0 ) {  val = val - 1; }
-                    break;
-                  case 14:
-                    if (val > 0) {  val = val - 0.1; }
-                    break;
-                  default:
-                    DEBUGLN(F("Invalid cursor pos for edit charge weight"));
-                    return;
-                }
-                g_presets.setPresetChargeWeight(val);
-              }
-              else
-              {
-                g_cur_line = 3;
-              }            
+              if (g_disp_edit) { g_presets.decPresetChargeWeight(g_cursor_pos-10); }
+              else { g_cur_line = 3; }            
               break;
             case BTN_OK:
               if (g_disp_edit) { g_disp_edit = false; }
@@ -539,39 +433,26 @@ void handleButton(int btn)
               //break;
               return;
             case BTN_RIGHT:
-              if (!g_disp_edit)
-              {
+              if (!g_disp_edit) {
                 g_cursor_pos = 2;
                 g_disp_edit = true;
               }
               else { return; }
               break;
             case BTN_UP:
-              if (g_disp_edit)
-              {
-                if (g_presets.getPowderIndex() > 0)
-                {
-                  g_presets.setPowderIndex(g_presets.getPowderIndex()-1);
-                }
-              }
-              else
-              {
+              if (g_disp_edit) { 
+                if (g_presets.getPowderIndex() > 0) { g_presets.setPowderIndex(g_presets.getPowderIndex()-1); }
+              } else {
                 g_cur_line = 2;
               }
               break;
             case BTN_DOWN:
-              if (g_disp_edit)
-              {
-                if (g_presets.getPowderIndex() < MAX_POWDERS)
-                {
-                  g_presets.setPowderIndex(g_presets.getPowderIndex()+1);
-                }
-              }
-              else { return; }
+              if (g_disp_edit) {
+                if (g_presets.getPowderIndex() < MAX_POWDERS) { g_presets.setPowderIndex(g_presets.getPowderIndex()+1); }
+              } else { return; }
               break;
             case BTN_OK:
-              if (g_disp_edit)
-              {
+              if (g_disp_edit) {
                 g_presets.setPowderIndex(g_powders.getCurrentPowder());
                 g_disp_edit = false;
               }
@@ -585,6 +466,9 @@ void handleButton(int btn)
           return;
       }
       break;
+    ////////////////////////////
+    // POWDERS
+    ////////////////////////////
     case g_state.pt_powders:
       switch (btn)
       {
@@ -618,6 +502,9 @@ void handleButton(int btn)
           break;
       }      
       break;
+    ////////////////////////////
+    // POWDERS EDIT
+    ////////////////////////////
     case g_state.pt_powders_edit:
       switch (g_cur_line)
       {
@@ -746,6 +633,9 @@ void handleButton(int btn)
           return;
       }
       break;
+    ////////////////////////////
+    // SYSTEM READY
+    ////////////////////////////
     case g_state.pt_ready:
       DEBUGLN(F("TODO: handleButton(): pt_run"));
       switch (btn)
@@ -766,6 +656,9 @@ void handleButton(int btn)
           break;
       }
       break;
+    ////////////////////////////
+    // DEFAULT
+    ////////////////////////////
     default:
       DEBUGP(g_state.getStateName());
       DEBUGLN(F(" not handled, handleButton(): nothing to do"));

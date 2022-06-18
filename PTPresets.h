@@ -8,25 +8,28 @@
 #include "PTConfig.h"
 #include <Adafruit_FRAM_I2C.h>
 #include "PTUtility.h"
+#include <ArduinoBLE.h>
 
 #ifndef PTPRESETS_H
 #define PTPRESETS_H 
 
-#define PRESETS_VERSION 10001
+#define PRESETS_VERSION 10002
 //0 base, 50 presets
 #define MAX_PRESETS 49 
 #define PRESETS_ADDR_BASE CONFIG_DATA_SIZE + 8
-//#define NAME_LEN 16 //TODO: consider consolidating to a common NAME_LEN
 
 /*
  * Type def for PresetData.  
  * Data structure for a preset in the list.
  */
 typedef struct _preset_data_t {
-  float charge_weight;    //grains
-  int powder_index;       //index into powder list
-  char preset_name[NAME_LEN+1];   
-  int preset_version;
+  float charge_weight;            //powder grains
+  int powder_index;               //index into powder list
+  char preset_name[NAME_LEN+1];   //name of preset (load)
+  char bullet_name[NAME_LEN+1];   //name of bullet
+  int bullet_weight;              //bullet grains
+  char brass_name[NAME_LEN+1];    //name of brass
+  int preset_version;             //version of this structure
 } PresetData;
 #define PRESET_DATA_SIZE sizeof(_preset_data_t)
 
@@ -38,7 +41,6 @@ typedef union _preset_data_storage_t {
   PresetData _preset_data;
   byte raw_data[PRESET_DATA_SIZE];
 } PresetDataStorage;
-
 
 /*
  * Class PresetManager
@@ -61,16 +63,32 @@ class PresetManager
     void setPowderIndex(int);
     bool getPresetName(char*);
     bool setPresetName(char*);
+    char* getBulletName();
+    bool setBulletName(char*);
+    int getBulletWeight();
+    void setBulletWeight(int);
+    char* getBrassName();
+    bool setBrassName(char*);
     
     // Actions
     bool init(Adafruit_FRAM_I2C, PTConfig);
-    void incNameChar(int);
-    void decNameChar(int);
+    void incPresetChargeWeight(int);
+    void decPresetChargeWeight(int);
+    void incPresetNameChar(int);
+    void decPresetNameChar(int);
+    void incBulletNameChar(int);
+    void decBulletNameChar(int);
+    void incBrassNameChar(int);
+    void decBrassNameChar(int);
+    void incBulletWeight();
+    void decBulletWeight();
     bool loadPreset(int);
     bool savePreset(bool = false);
     bool isDirty();
     bool resetCurrentPreset();
     bool isDefined();
+    bool BLEWriteCurrentPreset(BLECharacteristic);
+    bool BLEWritePresetList(BLECharacteristic);
       
   private:
 
@@ -78,10 +96,11 @@ class PresetManager
     PTConfig _config;
     Adafruit_FRAM_I2C _fram;
     PresetDataStorage _preset_buffer;  // storage read/write buffer
-    PresetDataStorage _defaults = { 0.0, -1, "EMPTY", PRESETS_VERSION};
+    PresetDataStorage _defaults = { 0.0, -1, "EMPTY           ", "                ", 0, "                ", PRESETS_VERSION};
+    PresetDataStorage _current;
     boolean _dirty;
     int _cur_preset;
-    char _error_buff[100];
+    char _error_buff[100];  //TODO: is this used?
     
     // Functions
     boolean _writePresetData();

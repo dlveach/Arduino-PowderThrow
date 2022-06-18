@@ -213,6 +213,18 @@ bool PowderManager::isDirty()
 }
 
 /*
+ * Write the current preset buffer to the supplied BLECharactaristic
+ * Returns true if succesful.  False if not.
+ */
+bool PowderManager::BLEWriteCurrentPowder(BLECharacteristic BLEChar)
+{
+  if (BLEChar.writeValue(_powder_buffer.raw_data, POWDER_DATA_SIZE)) {
+    return (true);
+  }
+  return (false);
+}
+
+/*
  * Load the powder buffer from an indexed location in FRAM.
  * Param index: the powder index in the list (0 base). Default is _cur_powder.
  * If the powder data is out of sync, it is intialized to default and saved.

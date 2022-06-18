@@ -13,22 +13,24 @@
  *   FRAM board: 0x50
  *   
  *   TODO: 
- *   - LOTS of stuff for bluetooth
- *   - Calibrate trickler speed
+ *   - LOTS of stuff for bluetooth (in work)
  *   - Clean up debug stuff
  *   - Evaluate headers, possible circular deps, possible refactoring.
  *   - Impliment scheduler to run LED update in another thread.
  *   - Evaluate use of more threads, like system run loop, Display, Buttons, BlueTooth, etc.
+ *   - Refactor, stop copying stuff from preset and powder into config object.  Use current
+ *      preset and current powder selections for all that. 
+ *   - Clean up modes, remove MANUAL
+ *
+ *   HARDWARE: 
+ *   - add a physical reset button
  *   
- *   BUGFIX
- *   - a crash during running state leaves TIC running, impliment "reset command timout"
+ *   BUGFIX:
+ *   - a crash during running state leaves TIC running, impliment TIC library "reset command timout"
  *   
  ***********************************************************************/
 
 #include "PowderThrow.h"
-
-//void setLEDs(bool forceOff=true); //TODO move to prototypes
-//void updateLEDs(bool forceOff = false);
 
 /*
  * The main loop
@@ -46,10 +48,7 @@ void loop() {
 void checkBLE()
 {
   BLE.poll(); 
-  if (BLE.connected()) 
-  {
-    updateBLEData(false);
-  }
+  if (BLE.connected())  {  updateBLEData(false);  }
 }
 
 /*
@@ -649,6 +648,36 @@ void toggleTrickler()
 }
 
 /*
+ * Calibrate scale.  Sets zero and pan on/pan off detection.
+ */
+void menuCalibrateScale()
+{
+  g_state.setState(g_state.pt_man_cal_scale);
+  g_mcp.getLastInterruptPin(); //clear any button interrupts
+  g_lcd.clear();
+  g_lcd.setCursor(0,0);
+  g_lcd.print(F("Calibrate Scale ..."));
+  g_lcd.setCursor(0,3);
+  g_lcd.print(F("Press any button ..."));
+  delay(500);
+  pauseForAnyButton(); //first call in calibrateScale() is skipped in this code block. Why???  HACK: added 2nd call to make it work
+  calibrateScale();
+  delay(1000);
+  setThrowerHome();
+  g_scale.checkScale(); //update scale state
+  g_lcd.setCursor(0,2);
+  if (isSystemCalibrated()) {
+    g_lcd.print(F("Scale calibrated.   "));
+  } else {
+    g_lcd.print(F("Scale Cal Failed.   "));
+  }
+  g_lcd.setCursor(0,3);
+  g_lcd.print(F("Press any button ..."));
+  pauseForAnyButton();
+  g_state.setState(g_state.pt_menu);
+}
+
+/*
  * Calibrate trickler flow rate
  * runMe is true when called to start (manual menu)
  * runMe is false when button pressed during calibration (A recursive call) and  
@@ -794,4 +823,20 @@ void calibrateTrickler(bool runMe)
   g_display_changed = true;
 }
   
-
+void setSystemReady() 
+{
+  if (g_presets.isDefined() && g_powders.isPowderDefined())
+  {
+    g_scale.setTarget(g_presets.getPresetChargeWeight());
+    char buff[NAME_LEN];
+    buff[0] = 0x00;
+    g_presets.getPresetName(buff);
+    g_config.setPresetName(buff);
+    buff[0] = 0x00;
+    g_powders.getPowderName(buff);
+    g_config.setPowderName(buff);
+    g_config.setKernelFactor(g_powders.getPowderFactor());
+    g_config.setTargetWeight(g_presets.getPresetChargeWeight());
+    g_state.setState(g_state.pt_ready);
+  } else { DEBUGLN(F("System not ready")); }
+}

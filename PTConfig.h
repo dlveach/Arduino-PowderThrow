@@ -10,6 +10,7 @@
 #include "Arduino.h"
 #include <Adafruit_FRAM_I2C.h>
 #include <ArduinoBLE.h>
+#include <LiquidCrystal_PCF8574.h>
 
 #define NAME_LEN 16 //avoiding cirlular dep. Dup defs in PTPresets.h and PTPowders.h  TODO: move to top level .h?
 
@@ -73,17 +74,18 @@ class PTConfig
     bool isBLEUpdateNeeded();
 
     // Indirect (copied preset/powder) data access 
+    //TODO: eval code for inconsistency across g_scale, g_presets, g_powders
     char* getPresetName();
     void setPresetName(char*);
-    float getTargetWeight();        //TODO: eval code for inconsistency with target in g_scale
-    void setTargetWeight(float);    //TODO: eval code for inconsistency with target in g_scale
+    float getTargetWeight();      
+    void setTargetWeight(float);  
     char* getPowderName();
     void setPowderName(char*);
     float getKernelFactor();
     void setKernelFactor(float);  
     
     // Actors
-    boolean init(Adafruit_FRAM_I2C fram);
+    boolean init(Adafruit_FRAM_I2C, LiquidCrystal_PCF8574);
     boolean resetConfig();  // reload data buffer from FRAM
     boolean loadConfig();
     boolean saveConfig(boolean = false);
@@ -93,23 +95,24 @@ class PTConfig
     
   private:
     // Vars
-    ConfigDataStorage _config_buffer;  // storage read/write buffer
+    ConfigDataStorage _config_buffer;  // FRAM storage read/write buffer
     ConfigDataStorage _defaults = {0, -1.5, 1.0, 0.10, 4000, 0.021, 0.002, CONFIG_VERSION};
     Adafruit_FRAM_I2C _fram;
-    bool _dirty;    // config data changed, needs saving
-    bool _updateBLE;  // config data changed, update BLE
+    bool _dirty;                    // config data changed, needs saving
+    bool _updateBLE;                // config data changed, update BLE
+    bool _version_reset;            // flag, if config version was reset on init
 
     //Internal data from current preset/powder
-    int _preset;            // current preset index
-    char _preset_name[NAME_LEN+1];     // from current preset
-    float _target_weight;   // from current preset
-    char _powder_name[NAME_LEN+1];     // from current preset -> powder
-    float _kernel_factor;    // from current preset -> powder
+    int _preset;                    // current preset index
+    char _preset_name[NAME_LEN+1];  // from current preset
+    float _target_weight;           // from current preset
+    char _powder_name[NAME_LEN+1];  // from current preset -> powder
+    float _kernel_factor;           // from current preset -> powder
     
     // Functions
     boolean _writeConfigData ();
     boolean _readConfigData ();
-    boolean _validateData ();  // Set internal data from current preset/powder
+    boolean _validateData ();       // Set internal data from current preset/powder  TODO: rethink this duplication
 };
 
 #endif //PTConfig_h

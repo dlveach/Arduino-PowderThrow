@@ -9,6 +9,7 @@
 #include <Adafruit_FRAM_I2C.h>
 #include "PTUtility.h"
 #include "PTPresets.h"
+#include <ArduinoBLE.h>
 
 #ifndef PTPOWDER_H
 #define PTPOWDER_H 
@@ -72,7 +73,8 @@ class PowderManager
     bool resetBuffer();
     bool isDirty();
     bool isPowderDefined();
-      
+    bool BLEWriteCurrentPowder(BLECharacteristic);
+    
   private:
 
     // Vars

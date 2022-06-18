@@ -1,17 +1,40 @@
 
 /*
+ * Circular increment an alpha-numeric character.
+ * Supports ' ', 'A-Z', '0-9'
+ */
+char incChar(char c) {
+  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
+  else if (c == 'Z') { c = ' '; }
+  else if (c == ' ') { c = '0'; }
+  else if (c == '9') { c = 'A'; }
+  else { c++; }
+  return c;
+}
+
+/*
+ * Circular decrement an alpha-numeric character.
+ * Supports ' ', 'A-Z', '0-9'
+ */
+char decChar(char c) {
+  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
+  else if (c == ' ') { c = 'Z'; }
+  else if (c == 'A') { c = '9'; }
+  else if (c == '0') { c = ' '; }
+  else { c--; }
+  return c;
+}
+
+/*
  * Overwrite entire FRAM with 0x00 to erase all storage.
  */
-void util_eraseFRAM(Adafruit_FRAM_I2C _fram)
-{
+void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   DEBUGP(F("Zeroing out FRAM "));
   uint16_t addr = CONFIG_DATA_ADDR;
   int idx = 0;
-  while ((addr + idx) < FRAM_SIZE)
-  {
+  while ((addr + idx) < FRAM_SIZE) {
     _fram.write8(addr + idx++, 0x00);
-    if ((idx % 1000) == 0) 
-    {
+    if ((idx % 1000) == 0) {
       DEBUGP(".");
       delay(250);  // slow it down a touch
     }
@@ -19,7 +42,6 @@ void util_eraseFRAM(Adafruit_FRAM_I2C _fram)
   DEBUGLN(".");
   DEBUGLN(F("FRAM zeroed out."));
 }
-
 
 /*
  * Handle System Error.
@@ -126,7 +148,6 @@ void dumpFCurve()
   
 }
 
-
 /*
  * enum class TicError
    45 {
@@ -147,7 +168,7 @@ void dumpFCurve()
    60 };
  */
 #ifdef DEBUG_SERIAL
-void debugErrors(uint32_t errors)
+void debugTICErrors(uint32_t errors)
 {
   if (errors & (1 << (uint8_t)TicError::IntentionallyDeenergized)) { Serial.println(F("IntentionallyDeenergized error")); }
   if (errors & (1 << (uint8_t)TicError::MotorDriverError)) { Serial.println(F("motor driver error")); }
@@ -165,7 +186,7 @@ void debugErrors(uint32_t errors)
   if (errors & (1 << (uint8_t)TicError::EncoderSkip)) { Serial.println(F("EncoderSkip  error")); }
 }
 #else
-void debugErrors(uint32_t errors)
+void debugTICErrors(uint32_t errors)
 {
   return;
 }

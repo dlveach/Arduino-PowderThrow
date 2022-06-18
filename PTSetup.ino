@@ -1,4 +1,8 @@
 
+
+
+
+
 /*
  * Setup.ino  Arduino setup()
  */
@@ -14,8 +18,7 @@ void setup() {
   while (!Serial) delay(10);
   DEBUGLN(F("Serial enabled"));
   #endif
-
-  delay (500);
+  delay (10);
   
   // Check for LCD display
   int error;
@@ -26,23 +29,32 @@ void setup() {
     delay(10);
     g_lcd.setBacklight(255);
     g_lcd.clear();  
-    g_lcd.setCursor (0, 0);
-    sprintf(_lcd_buff, "PowderThrow %3s%5s", VERSION, BUILD);
-    g_lcd.setCursor(0,2);
-    g_lcd.print(F("System init ...     "));
+    g_lcd.setCursor (0,0);
+    sprintf(_lcd_buff, "PowderThrow %3s.%s", VERSION, BUILD);
     g_lcd.print(_lcd_buff);
     DEBUGLN(_lcd_buff); 
+    Serial.println(_lcd_buff);  //DEBUG:
+    sprintf(_lcd_buff, "%s %s", __DATE__, __TIME__);
+    g_lcd.setCursor(0,1);
+    g_lcd.print(_lcd_buff);
+    DEBUGLN(_lcd_buff); 
+    Serial.println(_lcd_buff);  //DEBUG:
     DEBUGLN(F("LCD I2C Enabled"));
   } else {
     DEBUGP(F("LCD I2C comm err: "));
     DEBUGP(error);
     while (1) delay(10);
   }  
-  delay(1000);
-  
+  delay(3000);
+  g_lcd.setCursor(0,1);
+  g_lcd.print(F("                    "));
+
+  // Setup custom LCD chars
+  g_lcd.createChar(LCD_UP_ARROW, up_arrow);
+  g_lcd.createChar(LCD_DOWN_ARROW, down_arrow);
+
   // Check for MCP expander
-  if (!g_mcp.begin_I2C()) 
-  {
+  if (!g_mcp.begin_I2C()) {
     DEBUGLN(F("MCP I2C comm err"));
     while (1) delay(10);
   }
@@ -88,11 +100,13 @@ void setup() {
   g_LED_Blu.init(g_mcp, MCP_LED_BLU_PIN);
   //delay (500);
 
-  //util_eraseFRAM(fram);  //TODO: a config menu option? reset to defaults?
+  // *********************************************************************
+  //util_eraseFRAM(fram);  //TODO: a menu option? reset to system to defaults?
   //delay (1000);
+  //**********************************************************************
 
   // Initialize config
-  if (!g_config.init(fram))
+  if (!g_config.init(fram, g_lcd))
   {
     DEBUGLN(F("System halt.  Unable to load config."));
     delay(100);
@@ -216,11 +230,13 @@ void setup() {
   updateLEDs();   
   util_setFscaleCurve(g_curve_map, g_config.getFcurveP());
   g_lcd.setCursor(0,2);
-  g_lcd.print(F("FCurve generated ..."));
+  g_lcd.print(F("FCurve generated.   "));
   delay(500);
 
   //initialize BLE
   initBLE();
+  g_lcd.setCursor(0,2);
+  g_lcd.print(F("BLE started.        "));
   delay(500);
 
   //flash all the LEDs when done with setup
@@ -244,12 +260,7 @@ void setup() {
   
   //DEBUGGING
   dumpSystemEnv();
-  delay(10);
-  Serial.print(F("Compile date: "));
-  Serial.println(__DATE__);
-  delay(10);
-  Serial.print(F("Compile time: "));
-  Serial.println(__TIME__);     
+  delay(10);  
 
   // go to menu screen  
   g_mcp.getLastInterruptPin();  //clear MCP interrupts one last time, just in case

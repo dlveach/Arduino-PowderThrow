@@ -28,56 +28,53 @@ PTConfig::PTConfig()
  * Returns true if successful, false if not.
  * Will set a system error.
  */
-bool PTConfig::init(Adafruit_FRAM_I2C fram)
+bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd)
 {
   _fram = fram;
-  if (!loadConfig())
-  {
+  _version_reset = false;
+  if (!loadConfig()) {
     util_handleSystemError(F("Can't load config."));
     _updateBLE = false;
     return (false);
+  }
+  if (_version_reset) {
+    lcd.setCursor(0,2);
+    lcd.print(F("FRAM resetting ...  "));
+    util_eraseFRAM(fram);
   }
   _updateBLE = true;
   return (true);
 }
 
 /*
- * 
+ *
  */
-bool PTConfig::isBLEUpdateNeeded()
-{
-  return (_updateBLE);
-}
+//bool isVersionOutOfDate() { return _versionReset; }
 
 /*
  * 
  */
-bool PTConfig::isDirty()
-{
-  return (_dirty);
-}
+bool PTConfig::isBLEUpdateNeeded() { return (_updateBLE); }
+
+/*
+ * 
+ */
+bool PTConfig::isDirty() { return (_dirty); }
 
 /*
  * Return config version.
  */
-int PTConfig::getVersion()
-{
-  return (_config_buffer._config_data.config_version);
-}
+int PTConfig::getVersion() { return (_config_buffer._config_data.config_version); }
 
 /*
  *
  */
-int PTConfig::getPreset()
-{
-  return (_config_buffer._config_data.preset);
-}
+int PTConfig::getPreset() {  return (_config_buffer._config_data.preset); }
 
 /*
  * 
  */
-void PTConfig::setPreset(int value)
-{
+void PTConfig::setPreset(int value) {
   _config_buffer._config_data.preset = value;
   _dirty = true;
   _updateBLE = true;
@@ -86,16 +83,12 @@ void PTConfig::setPreset(int value)
 /*
  * 
  */
-float PTConfig::getFcurveP()
-{
-  return (_config_buffer._config_data.fscaleP);  
-}
+float PTConfig::getFcurveP() {  return (_config_buffer._config_data.fscaleP);  }
 
 /*
  * 
  */
-void PTConfig::setFcurveP(float value)
-{
+void PTConfig::setFcurveP(float value) {
   _config_buffer._config_data.fscaleP = value;
   _dirty = true;
   _updateBLE = true;
@@ -104,16 +97,12 @@ void PTConfig::setFcurveP(float value)
 /*
  * 
  */
-float PTConfig::getDecelThreshold()
-{
-  return (_config_buffer._config_data.decel_threshold);
-}
+float PTConfig::getDecelThreshold() {  return (_config_buffer._config_data.decel_threshold);  }
 
 /*
  * 
  */
-void PTConfig::setDecelThreshold(float value)
-{
+void PTConfig::setDecelThreshold(float value) {
   _config_buffer._config_data.decel_threshold = value;
   _dirty = true;
   _updateBLE = true;
@@ -122,16 +111,12 @@ void PTConfig::setDecelThreshold(float value)
 /*
  * 
  */
-float PTConfig::getBumpThreshold()
-{
-  return (_config_buffer._config_data.bump_threshold);
-}
+float PTConfig::getBumpThreshold() {  return (_config_buffer._config_data.bump_threshold); }
 
 /*
  * 
  */
-void PTConfig::setBumpThreshold(float value)
-{
+void PTConfig::setBumpThreshold(float value) {
   _config_buffer._config_data.bump_threshold = value;
   _dirty = true;
   _updateBLE = true;
@@ -140,16 +125,12 @@ void PTConfig::setBumpThreshold(float value)
 /*
  * 
  */
-int PTConfig::getDecelLimit()
-{
-  return (_config_buffer._config_data.decel_limit);
-}
+int PTConfig::getDecelLimit() {  return (_config_buffer._config_data.decel_limit); }
 
 /*
  * 
  */
-void PTConfig::setDecelLimit(int value)
-{
+void PTConfig::setDecelLimit(int value) {
   _config_buffer._config_data.decel_limit = value;
   _dirty = true;
   _updateBLE = true;
@@ -158,10 +139,7 @@ void PTConfig::setDecelLimit(int value)
 /*
  * TODO: add this to GUI to configure
  */
-float PTConfig::getGnTolerance()
-{
-  return (_config_buffer._config_data.gn_tolerance);
-}
+float PTConfig::getGnTolerance() { return (_config_buffer._config_data.gn_tolerance); }
 
 /*
  * 
@@ -189,16 +167,12 @@ void PTConfig::setMgTolerance(float value)
 /*
  * 
  */
-char* PTConfig::getPresetName()
-{
-  return (_preset_name);
-}
+char* PTConfig::getPresetName() { return (_preset_name); }
 
 /*
  * 
  */
-void PTConfig::setPresetName(char* buff)
-{
+void PTConfig::setPresetName(char* buff) {
   strncpy(_preset_name, buff, NAME_LEN);
   _preset_name[NAME_LEN]=0;
 }
@@ -206,16 +180,12 @@ void PTConfig::setPresetName(char* buff)
 /*
  * 
  */
-char* PTConfig::getPowderName()
-{
-  return (_powder_name);
-}
+char* PTConfig::getPowderName() { return (_powder_name); }
 
 /*
  * 
  */
-void PTConfig::setPowderName(char* buff)
-{
+void PTConfig::setPowderName(char* buff) {
   strncpy(_powder_name, buff, NAME_LEN);
   _powder_name[NAME_LEN]=0;
 }
@@ -223,43 +193,29 @@ void PTConfig::setPowderName(char* buff)
 /*
  * 
  */
-float PTConfig::getKernelFactor()
-{
-  return (_kernel_factor); 
-}
+float PTConfig::getKernelFactor() { return (_kernel_factor); }
 
 /*
  * 
  */
-void PTConfig::setKernelFactor(float value)
-{
-  _kernel_factor = value;
-}
+void PTConfig::setKernelFactor(float value) { _kernel_factor = value; }
 
 /*
  *
  */
-void PTConfig::setTargetWeight(float value)
-{
-  _target_weight = value;
-}
+void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
 /*
  *
  */
-float PTConfig::getTargetWeight()
-{
-  return (_target_weight);
-}
+float PTConfig::getTargetWeight() { return (_target_weight); }
 
 /*
  * Reset system config to current config buffer.
  */
-boolean PTConfig::resetConfig()
-{
+boolean PTConfig::resetConfig() {
   //DEBUGLN(F("resetConfig(): reading FRAM storage for config."));
-  if (!_readConfigData()) 
-  {
+  if (!_readConfigData())  {
     DEBUGLN(F("resetConfig(): ERROR: could not read FRAM storage."));
     return (false);
   }  
@@ -271,20 +227,16 @@ boolean PTConfig::resetConfig()
 /*
  * Load config buffer from FRAM and set system config.
  */
-boolean PTConfig::loadConfig()
-{
+boolean PTConfig::loadConfig() {
   //DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
-  if (!_readConfigData()) 
-  {
+  if (!_readConfigData())  {
     DEBUGLN(F("loadConfig(): ERROR: could not read FRAM storage."));
     return (false);
-  }
-  else
-  {
-    if (_config_buffer._config_data.config_version != CONFIG_VERSION) 
-    {
+  } else {
+    if (_config_buffer._config_data.config_version != CONFIG_VERSION)  {
       DEBUGLN(F("loadConfig(): Config version out of sync, set to defaults."));    
       saveConfig(true);
+      _version_reset = true;
     }
   }
   _dirty = false;
@@ -295,17 +247,14 @@ boolean PTConfig::loadConfig()
  * Copy current system config to config buffer and save to storage.
  * Returns true if successful, false if not.
  */
-boolean PTConfig::saveConfig(boolean init)
-{
-  if (init)
-  {
+boolean PTConfig::saveConfig(boolean init) {
+ if (init) {
     //DEBUGLN(F("saveSettings(): Initializing config to defaults."));
     _config_buffer = _defaults;
   }
   if (!_dirty) { return (true); } //no changes to save
   //DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
-  if (_writeConfigData())
-  {
+  if (_writeConfigData()) {
     _dirty = false;
     return (true);
   }
@@ -315,8 +264,7 @@ boolean PTConfig::saveConfig(boolean init)
 /*
  * 
  */
- bool PTConfig::updateBLE(BLECharacteristic BLEChar)
- {
+ bool PTConfig::updateBLE(BLECharacteristic BLEChar) {
    if (BLEChar.writeValue(_config_buffer.raw_data, CONFIG_DATA_SIZE)) {
      _updateBLE = false;
      return (true);
@@ -331,8 +279,7 @@ boolean PTConfig::saveConfig(boolean init)
 /*
  * Writes the config buffer to FRAM.
  */
-boolean PTConfig::_writeConfigData ()
-{
+boolean PTConfig::_writeConfigData () {
   uint16_t addr = CONFIG_DATA_ADDR;
   if ((addr + CONFIG_DATA_SIZE-1) > FRAM_SIZE) return (false); //overflow
   for (int i=0; i<CONFIG_DATA_SIZE; i++) _fram.write8(addr + i, _config_buffer.raw_data[i]);
@@ -343,11 +290,9 @@ boolean PTConfig::_writeConfigData ()
  * Reads the FRAM into the config buffer.
  * Returns true if successful, false if not.
  */
-boolean PTConfig::_readConfigData ()
-{
+boolean PTConfig::_readConfigData () {
   uint16_t addr = CONFIG_DATA_ADDR;
-  if ((addr + CONFIG_DATA_SIZE-1) > FRAM_SIZE) 
-  {
+  if ((addr + CONFIG_DATA_SIZE-1) > FRAM_SIZE) {
     DEBUGLN(F("FATAL: _readConfigData(): FRAM storage address overflow."));
     return (false); //overflow
   }

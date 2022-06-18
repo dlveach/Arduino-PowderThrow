@@ -17,5 +17,8 @@
 void util_handleSystemError(String msg);
 void util_setFscaleCurve(float* _curve_map, float _fscaleP);
 void util_eraseFRAM(Adafruit_FRAM_I2C _fram);
+char incChar(char);
+char decChar(char);
+
 
 #endif //PTUtility_h

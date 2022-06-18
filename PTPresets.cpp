@@ -7,7 +7,6 @@
 #include "PTPresets.h"
 #include "PTUtility.h"
 
-
 /*
  * Constructor
  */
@@ -116,36 +115,163 @@ bool PresetManager::setPresetName(char* buff)
   return (true);  
 }
 
+char* PresetManager::getBulletName() {
+  return _preset_buffer._preset_data.bullet_name;
+}
+bool PresetManager::setBulletName(char* buff) {
+  if (strlen(buff) > NAME_LEN) {
+    DEBUGP(F("ERROR: string too long. "));
+    DEBUGLN(__LINE__);
+    util_handleSystemError("ERR: str too long");
+    return (false);
+  }
+  strcpy(_preset_buffer._preset_data.bullet_name, buff);
+  _dirty = true;
+  return (true);  
+}
+
+int PresetManager::getBulletWeight() {
+  return _preset_buffer._preset_data.bullet_weight;
+}
+
+void PresetManager::setBulletWeight(int val) {
+  _preset_buffer._preset_data.bullet_weight = val;
+}
+
+char* PresetManager::getBrassName() {
+  return _preset_buffer._preset_data.brass_name;
+}
+
+bool PresetManager::setBrassName(char* buff) {
+  if (strlen(buff) > NAME_LEN) {
+    DEBUGP(F("ERROR: string too long. "));
+    DEBUGLN(__LINE__);
+    util_handleSystemError("ERR: str too long");
+    return (false);
+  }
+  strcpy(_preset_buffer._preset_data.brass_name, buff);
+  _dirty = true;
+  return (true);  
+}
+
 /*
  * Increment preset name character at index i. 
- * Limited to A-Z, 0-9 and space
+ * See Utility.ino
  */
-void PresetManager::incNameChar(int i)
+void PresetManager::incPresetNameChar(int i)
 {
   char c = _preset_buffer._preset_data.preset_name[i];
-  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
-  else if (c == 'Z') { c = ' '; }
-  else if (c == ' ') { c = '0'; }
-  else if (c == '9') { c = 'A'; }
-  else { c++; }
-  _preset_buffer._preset_data.preset_name[i] = c;
+  _preset_buffer._preset_data.preset_name[i] = incChar(c);
   _dirty = true;
 }
 
 /*
  * Decrement preset name character at index i.
- * Limited to A-Z, 0-9 and space
+ * See Utility.ino
  */
-void PresetManager::decNameChar(int i)
+void PresetManager::decPresetNameChar(int i)
 {
   char c = _preset_buffer._preset_data.preset_name[i];
-  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
-  else if (c == ' ') { c = 'Z'; }
-  else if (c == 'A') { c = '9'; }
-  else if (c == '0') { c = ' '; }
-  else { c--; }
-  _preset_buffer._preset_data.preset_name[i] = c;
+  _preset_buffer._preset_data.preset_name[i] = decChar(c);
   _dirty = true;
+}
+
+/*
+ * Increment charge weight by an ammount determined by pos (cursor pos).
+ * Assumes float data format: NNN.N
+ */
+void PresetManager::incPresetChargeWeight(int pos) {
+  float val = _preset_buffer._preset_data.charge_weight;
+  switch (pos)
+  {
+    case 0:
+      if (val <= 100) {  val = val + 100; }
+      break;
+    case 1:
+      if (val <= 190) {  val = val + 10; }
+      break;
+    case 2:
+      if (val <= 199) {  val = val + 1; }
+      break;
+    case 4:
+      if (val < 200) {  val = val + 0.1; }
+      break;
+    default:
+      DEBUGLN(F("Invalid cursor pos for edit charge weight"));
+      return;
+  }  
+  if (val != _preset_buffer._preset_data.charge_weight) {
+    _preset_buffer._preset_data.charge_weight = val;
+    _dirty = true;
+  }
+}
+
+/*
+ * Decrement charge weight by an ammount determined by pos (cursor pos).
+ * Assumes float data format: NNN.N
+ */
+void PresetManager::decPresetChargeWeight(int pos) {
+  float val = _preset_buffer._preset_data.charge_weight;
+  switch (pos)
+  {
+    case 0:
+      if (val >= 100.0) {  val = val - 100; }
+      break;
+    case 1:
+      if (val >= 10.0) {  val = val - 10; }
+      break;
+    case 2:
+      if (val >= 1.0 ) {  val = val - 1; }
+      break;
+    case 4:
+      if (val >= 0.1) {  val = val - 0.1; }
+      break;
+    default:
+      DEBUGLN(F("Invalid cursor pos for edit charge weight"));
+      return;
+  }
+  if (val < 0) { val = 0; } //just for safety
+  if (val != _preset_buffer._preset_data.charge_weight) {
+    _preset_buffer._preset_data.charge_weight = val;
+    _dirty = true;
+  }
+}
+
+void PresetManager::incBulletNameChar(int i) {
+  char c = _preset_buffer._preset_data.bullet_name[i];
+  _preset_buffer._preset_data.bullet_name[i] = incChar(c);
+  _dirty = true;  
+}
+
+void PresetManager::decBulletNameChar(int i) {
+  char c = _preset_buffer._preset_data.bullet_name[i];
+  _preset_buffer._preset_data.bullet_name[i] = decChar(c);
+  _dirty = true;
+}
+
+void PresetManager::incBrassNameChar(int i) {
+  char c = _preset_buffer._preset_data.brass_name[i];
+  _preset_buffer._preset_data.brass_name[i] = incChar(c);
+  _dirty = true;  
+}
+
+void PresetManager::decBrassNameChar(int i) {
+  char c = _preset_buffer._preset_data.brass_name[i];
+  _preset_buffer._preset_data.brass_name[i] = decChar(c);
+  _dirty = true;
+}
+
+//TODO: change these to edit cursor position
+void PresetManager::incBulletWeight() {
+  _preset_buffer._preset_data.bullet_weight++;
+  _dirty = true;
+}
+
+void PresetManager::decBulletWeight() {
+  if (_preset_buffer._preset_data.bullet_weight > 0) {
+    _preset_buffer._preset_data.bullet_weight--;
+    _dirty = true;
+  }
 }
 
 /*
@@ -154,6 +280,25 @@ void PresetManager::decNameChar(int i)
 bool PresetManager::isDirty()
 {
   return (_dirty);
+}
+
+/*
+ * Write the current preset buffer to the supplied BLECharactaristic
+ * Returns true if succesful.  False if not.
+ */
+bool PresetManager::BLEWriteCurrentPreset(BLECharacteristic BLEChar) {
+  if (BLEChar.writeValue(_preset_buffer.raw_data, PRESET_DATA_SIZE)) {
+    return (true);
+  }
+  return (false);
+}
+
+/*
+ * Write the preset list to the supplied BLECharactaristic
+ * Returns true if succesful.  False if not.
+ */
+bool PresetManager::BLEWritePresetList(BLECharacteristic BLEChar) {
+  
 }
 
 /*
@@ -272,3 +417,4 @@ boolean PresetManager::_readPresetData()
   //DEBUGLN(_error_buff);  
   return (true);
 }
+
