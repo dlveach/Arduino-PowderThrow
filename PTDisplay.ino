@@ -26,20 +26,23 @@ uint8_t down_arrow[] = {
  * Update display based on current state, page, line number, edit mode and cursor pos
  * Called regularly by main loop (sometimes by direct display output functions)
  *
+ * Parameters:
+ *  force: boolean, if true will force a full refresh.  Default: false.
+ *
  * Globals:
- * g_display_changed:  flag set by other fns to trigger display update.
- * g_disp_edit:  edit mode flag.
- * g_cursor_pos:  current cursor position
- * g_cur_line:  current cursor line
- * g_disp_page:  current page (when state has multiple pages)
+ *  g_display_changed:  flag set by other fns to trigger display update.
+ *  g_disp_edit:  edit mode flag.
+ *  g_cursor_pos:  current cursor position
+ *  g_cur_line:  current cursor line
+ *  g_disp_page:  current page (when state has multiple pages)
  *
  */
-void displayUpdate()
+void displayUpdate(bool force)
 {
 //                        12345678901234567890
   static char buff[21] = "                    ";
   static bool _clear_disp = true; //static flag to avoid clear on every state update
-
+  if (force) { _clear_disp = true; }  // forced refresh
   if (!g_display_changed) return;
   g_display_changed = false;
   switch (g_state.getState())
@@ -75,7 +78,7 @@ void displayUpdate()
       g_lcd.print(buff);
       if (_clear_disp) {
         g_lcd.setCursor(0,1);
-        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());
+        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  //TODO: switch to using scale?
         g_lcd.print(buff);
       }
       

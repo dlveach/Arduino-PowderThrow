@@ -823,6 +823,7 @@ void calibrateTrickler(bool runMe)
   g_display_changed = true;
 }
   
+//TODO: refactor preset/powder info from config into scale object?
 void setSystemReady() 
 {
   if (g_presets.isDefined() && g_powders.isPowderDefined())

@@ -25,7 +25,7 @@ int PTState::getState()
 /*
  * Return current state
  */
-int PTState::setState(state_t state)
+void PTState::setState(state_t state)
 {
   _state = state;
 }
@@ -89,4 +89,34 @@ void PTState::BtnLeft()
 void PTState::BtnRight()
 {
   //TODO:
+}
+
+bool PTState::isValidState(int value) {
+  switch (value) {
+    case pt_undefined:
+    case pt_error:
+    case pt_setup:
+    case pt_ready:
+    case pt_throwing:
+    case pt_trickling:
+    case pt_bumping:
+    case pt_paused:
+    case pt_locked:
+    case pt_menu:
+    case pt_cfg:
+    case pt_man:
+    case pt_man_throw:
+    case pt_man_trickle:
+    case pt_man_cal_trickler:
+    case pt_man_cal_scale:
+    case pt_powders:
+    case pt_powders_edit:
+    case pt_presets:
+    case pt_presets_edit:
+      return(true);
+      break;
+    default:
+      return(false);
+      break;
+  }  
 }

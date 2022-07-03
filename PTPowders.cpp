@@ -212,16 +212,33 @@ bool PowderManager::isDirty()
   return (_dirty);
 }
 
-/*
- * Write the current preset buffer to the supplied BLECharactaristic
- * Returns true if succesful.  False if not.
+ /* BLE support function.  Load & return Powder data struct for use in BLE comm.
+ *  NOTE: this has no affect on current powder buffer, uses an independent buffer 
+ *  that should not be modified.  It is never saved.
  */
-bool PowderManager::BLEWriteCurrentPowder(BLECharacteristic BLEChar)
-{
-  if (BLEChar.writeValue(_powder_buffer.raw_data, POWDER_DATA_SIZE)) {
-    return (true);
+bool PowderManager::getBLEDataStruct(byte buffer[], int index) {
+  if ((index < 0) || (index > MAX_POWDERS)) {
+    DEBUGLN(F("ERROR: getBLEDataStruct(): Powder index out of range."));
+    Serial.println("ERROR: getBLEDataStruct(): Preset index out of range.");
+    return false;
+  } else if (!_readPowderData(buffer, index))  {
+    DEBUGLN(F("loadPowder(): ERROR: could not read FRAM storage."));
+    Serial.println("loadPowder(): ERROR: could not read FRAM storage.");
+    return false;
   }
-  return (false);
+  return (true);
+}
+
+/*
+ *  Load the supplied buffer with powder defaults.
+ */
+bool PowderManager::getDefaults(byte buffer[], int size) {
+  if (size != POWDER_DATA_SIZE) {
+    Serial.println("ERROR: getDefaults(): buffer size != defaults size");
+    return (false);
+  }
+  memcpy(buffer, _defaults.raw_data, POWDER_DATA_SIZE);
+  return (true);
 }
 
 /*
@@ -230,24 +247,18 @@ bool PowderManager::BLEWriteCurrentPowder(BLECharacteristic BLEChar)
  * If the powder data is out of sync, it is intialized to default and saved.
  * Returns true if successful, false if not.
  */ 
-boolean PowderManager::loadPowder(int index)
-{
-  if ((index < 0) || (index > MAX_POWDERS))
-  {
+boolean PowderManager::loadPowder(int index) {
+  if ((index < 0) || (index > MAX_POWDERS)) {
     DEBUGLN(F("ERROR: loadPowder(): Powder index out of range."));
     return (false); 
   }
   _cur_powder = index;
   //DEBUGLN(F("loadPowder(): reading FRAM storage for powder."));
-  if (!_readPowderData()) 
-  {
+  if (!_readPowderData(_powder_buffer.raw_data, _cur_powder)) {
     DEBUGLN(F("loadPowder(): ERROR: could not read FRAM storage."));
     return (false);
-  }
-  else
-  {
-    if (_powder_buffer._powder_data.powder_version != POWDERS_VERSION) 
-    {
+  } else {
+    if (_powder_buffer._powder_data.powder_version != POWDERS_VERSION) {
       DEBUGP(F("loadPowder(): Powder version "));
       DEBUGP(_powder_buffer._powder_data.powder_version);
       DEBUGLN(F(" out of sync, setting to defaults."));    
@@ -261,12 +272,8 @@ boolean PowderManager::loadPowder(int index)
 /*
  * Restore buffer to saved data for current powder index in list.
  */
-boolean PowderManager::resetBuffer()
-{
-  if (_dirty)
-  {
-    loadPowder(_cur_powder);
-  }
+boolean PowderManager::resetBuffer() {
+  if (_dirty) { loadPowder(_cur_powder); }
 }
 
 /*
@@ -275,10 +282,8 @@ boolean PowderManager::resetBuffer()
  * saving.  Defaults to false.
  * Returns true if successful, false if not.
  */
-boolean PowderManager::savePowder(boolean init)
-{
-  if (init)
-  {
+boolean PowderManager::savePowder(boolean init) {
+  if (init) {
     DEBUGLN(F("savePowder(): Initializing powder to defaults."));
     _powder_buffer = _defaults;
     _dirty = true;
@@ -286,8 +291,7 @@ boolean PowderManager::savePowder(boolean init)
   if (!_dirty) { return (true); }  //nothing to save
   //sprintf(_error_buff, "savePowder(): Saving powder %02d to FRAM storage.", _cur_powder);
   //DEBUGLN(_error_buff);
-  if (_writePowderData())
-  {
+  if (_writePowderData(_cur_powder)) {
     _dirty = false;
     return (true);
   }
@@ -299,9 +303,9 @@ boolean PowderManager::savePowder(boolean init)
  * FRAM location determined from current powder index.
  * Returns true if successful, false if not.
  */
-boolean PowderManager::_writePowderData()
+boolean PowderManager::_writePowderData(int index)
 {
-  uint16_t addr = POWDERS_ADDR_BASE + _cur_powder * POWDER_DATA_SIZE;
+  uint16_t addr = POWDERS_ADDR_BASE + index * POWDER_DATA_SIZE;
   if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE)
   {
     DEBUGLN(F("FATAL: _writePowderData(): FRAM storage address overflow."));
@@ -318,13 +322,13 @@ boolean PowderManager::_writePowderData()
 }
 
 /*
- * Reads the FRAM into the powder buffer.
- * FRAM location determined from current powder index.
+ * Reads the FRAM into the supplied buffer.
+ * FRAM location determined from the supplied powder index.
  * Returns true if successful, false if not.
  */
-boolean PowderManager::_readPowderData()
+boolean PowderManager::_readPowderData(byte buffer[], int index)
 {
-  uint16_t addr = POWDERS_ADDR_BASE + _cur_powder * POWDER_DATA_SIZE;
+  uint16_t addr = POWDERS_ADDR_BASE + index * POWDER_DATA_SIZE;
   if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE) 
   {
     DEBUGLN(F("FATAL: _readPowderData(): FRAM storage address overflow."));
@@ -333,7 +337,7 @@ boolean PowderManager::_readPowderData()
   int idx;
   for (int i=0; i<POWDER_DATA_SIZE; i++) 
   {
-    _powder_buffer.raw_data[i] = _fram.read8(addr + i);
+    buffer[i] = _fram.read8(addr + i);
     idx = i;
   }
   //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);

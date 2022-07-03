@@ -25,6 +25,21 @@ char decChar(char c) {
   return c;
 }
 
+void printBytes(byte addr[], int byte_count) {
+  char buff[100];
+  Serial.print("printBytes() byte_count: ");
+  Serial.println(byte_count);
+  Serial.print("Address: ");
+  Serial.println((unsigned int)&addr[0], HEX);
+  Serial.print("Bytes: ");
+  for (int i=0; i<byte_count-1; i++) {
+    sprintf(buff, "[%d],", addr[i]);
+    Serial.print(buff);
+  }
+  sprintf(buff, "[%d]", addr[byte_count-1]);
+  Serial.println(buff);  
+}
+
 /*
  * Overwrite entire FRAM with 0x00 to erase all storage.
  */

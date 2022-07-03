@@ -1,7 +1,7 @@
 
 /*
 970a6f6e-e01b-11ec-9d64-0242ac120002 - Service
-970a71b2-e01b-11ec-9d64-0242ac120002 - Command Button
+71adfe5e-eda2-11ec-8ea0-0242ac120002 - Command + Parameter
 970a745a-e01b-11ec-9d64-0242ac120002 - Scale Weight (String)
 970a75a4-e01b-11ec-9d64-0242ac120002 - Scale Target Weight (String)
 970a769e-e01b-11ec-9d64-0242ac120002 - Scale Condition
@@ -9,9 +9,9 @@
 970a7892-e01b-11ec-9d64-0242ac120002 - Decel Thresh
 970a798c-e01b-11ec-9d64-0242ac120002 - Config data structure
 970a7aae-e01b-11ec-9d64-0242ac120002 - Preset data structure
-970a7c20-e01b-11ec-9d64-0242ac120002 - Powder data structure
 2ab6726c-ec1a-11ec-8ea0-0242ac120002 - Preset List item
-71adfe5e-eda2-11ec-8ea0-0242ac120002 - Command + Parameter
+970a7c20-e01b-11ec-9d64-0242ac120002 - Powder data structure
+970a71b2-e01b-11ec-9d64-0242ac120002 - Powder List Item
 71ae0138-eda2-11ec-8ea0-0242ac120002
 71ae0282-eda2-11ec-8ea0-0242ac120002
 71ae03ea-eda2-11ec-8ea0-0242ac120002
@@ -24,59 +24,79 @@
 */
 
 
-//TODO: add a scale mode charactaristic,
-//TODO: add a persistent data model in phone app
-//TODO: handle display switches on mode in app
-//TODO: add preset & powder select/edit in app
-//TODO: add config settings edit in app
+//TODO: refactor powder and preset FRAM data structure to include index, clean up code
+//TODO: handle preset & powder save (modify current and save in FRAM)
+//TODO: handle preset & powder selections in app (change current)
+//TODO: add config settings edit in app, handle save
+//TODO: extend config settings FRAM data structure, disp/edit, & sync with app
 //TODO: lots of cleanup, debug removal etc.
 
 #define BLE_DATA_UPDATE_INTERVAL 100
 
-// BLE custom command codes
+// BLE Parameter command codes
 #define BLE_COMMAND_REQ_CONFIG_DATA 0x01
-#define BLE_COMMAND_REQ_CURRENT_PRESET 0x10
-#define BLE_COMMAND_REQ_PRESET_BY_INDEX 0x20
-#define BLE_COMMAND_REQ_CURRENT_POWDER 0x30
-#define BLE_COMMAND_REQ_POWDER_LIST 0x40
+#define BLE_COMMAND_SET_CURRENT_PRESET 0x20
+#define BLE_COMMAND_REQ_PRESET_BY_INDEX 0x21
+#define BLE_COMMAND_REQ_PRESET_NAME_AT_INDEX 0x22
+#define BLE_COMMAND_SET_CURRENT_POWDER 0x30
+#define BLE_COMMAND_REQ_POWDER_BY_INDEX 0x31
+#define BLE_COMMAND_REQ_POWDER_NAME_AT_INDEX 0x32
+#define BLE_COMMAND_SET_SYSTEM_STATE 0x50
 
 // BLE Services and Charactaristics
 #define BLE_SERVICE_GUID "970a6f6e-e01b-11ec-9d64-0242ac120002"
-#define BLE_COMMAND_CHAR_GUID "970a71b2-e01b-11ec-9d64-0242ac120002"
-#define BLE_SCALE_STRING_GUID "970a745a-e01b-11ec-9d64-0242ac120002"
+#define BLE_PARAMETER_COMMAND_GUID "71adfe5e-eda2-11ec-8ea0-0242ac120002"
+#define BLE_SCALE_WEIGHT_GUID "970a745a-e01b-11ec-9d64-0242ac120002"
 #define BLE_SCALE_TARGET_GUID "970a75a4-e01b-11ec-9d64-0242ac120002"
 #define BLE_SCALE_COND_GUID "970a769e-e01b-11ec-9d64-0242ac120002"
 #define BLE_SYSTEM_STATE_GUID "970a77a2-e01b-11ec-9d64-0242ac120002"
 #define BLE_DECEL_THRESH_GUID "970a7892-e01b-11ec-9d64-0242ac120002"
 #define BLE_CONFIG_DATA_GUID "970a798c-e01b-11ec-9d64-0242ac120002"
 #define BLE_PRESET_DATA_GUID "970a7aae-e01b-11ec-9d64-0242ac120002"
+#define BLE_PRESET_LIST_ITEM_GUID "2ab6726c-ec1a-11ec-8ea0-0242ac120002"
 #define BLE_POWDER_DATA_GUID "970a7c20-e01b-11ec-9d64-0242ac120002"
-#define BLE_PARAMETER_COMMAND_GUID "71adfe5e-eda2-11ec-8ea0-0242ac120002"
+#define BLE_POWDER_LIST_ITEM_CHAR_GUID "970a71b2-e01b-11ec-9d64-0242ac120002"
 
 // BLE misc definitions
 #define PARAMETER_COMMAND_SIZE 2
 
+// For transmitting Preset and Powder name list items
+typedef struct _list_item_t {
+  int list_index;
+  bool empty; 
+  char item_name[NAME_LEN+1];
+} ListItem;
+#define LIST_ITEM_SIZE sizeof(_list_item_t)
+typedef union _list_item_buffer_t {
+  ListItem data;
+  byte raw_data[LIST_ITEM_SIZE];
+} ListItemBuffer;
+
 BLEService ptBLE_Service(BLE_SERVICE_GUID); 
-BLEByteCharacteristic commandChar(BLE_COMMAND_CHAR_GUID, BLERead | BLEWrite);
-BLEDescriptor commandDescriptor("2901", "Command button");
-BLEStringCharacteristic scaleStringChar(BLE_SCALE_STRING_GUID, BLERead | BLENotify, 31);
-BLEDescriptor scaleDataStringDescriptor("2901", "Scale weight, string value");
-BLEStringCharacteristic scaleTargetChar(BLE_SCALE_TARGET_GUID, BLERead | BLENotify, 31);
-BLEDescriptor scaleTargetDescriptor("2901", "Scale Target weight, string value");
-BLEStringCharacteristic scaleCondChar(BLE_SCALE_COND_GUID, BLERead | BLENotify, 31);
+BLECharacteristic parameterCommandChar(BLE_PARAMETER_COMMAND_GUID, BLERead | BLEWrite | BLENotify, PARAMETER_COMMAND_SIZE, true);
+BLEDescriptor parameterCommandDescriptor("2901", "Parameter Command");
+BLECharacteristic scaleWeightChar(BLE_SCALE_WEIGHT_GUID, BLERead | BLENotify, 5, true);
+BLEDescriptor scaleWeightDescriptor("2901", "Scale weight");
+BLECharacteristic scaleTargetChar(BLE_SCALE_TARGET_GUID, BLERead | BLENotify, 5, true);  // use structure (when scale holds copy of current preset)
+BLEDescriptor scaleTargetDescriptor("2901", "Scale Target weight");
+BLEIntCharacteristic scaleCondChar(BLE_SCALE_COND_GUID, BLERead | BLENotify);  
 BLEDescriptor scaleCondDescriptor("2901", "Scale Condition");
-BLEStringCharacteristic systemStateChar(BLE_SYSTEM_STATE_GUID, BLERead | BLENotify, 31);
+BLEIntCharacteristic systemStateChar(BLE_SYSTEM_STATE_GUID, BLERead | BLENotify); 
 BLEDescriptor systemStateDescriptor("2901", "System State");
-BLEStringCharacteristic decelThreshChar(BLE_DECEL_THRESH_GUID, BLERead | BLEWrite | BLENotify, 31);
+BLEFloatCharacteristic decelThreshChar(BLE_DECEL_THRESH_GUID, BLERead | BLEWrite | BLENotify);
 BLEDescriptor decelThreshDescriptor("2901", "Decel Threshold");
 BLECharacteristic configDataChar(BLE_CONFIG_DATA_GUID, BLERead | BLEWrite | BLENotify, CONFIG_DATA_SIZE, true);
 BLEDescriptor configDataDescriptor("2901", "Config data structure");
-BLECharacteristic presetDataChar(BLE_PRESET_DATA_GUID, BLERead | BLENotify, PRESET_DATA_SIZE, true);
-BLEDescriptor presetDataDescriptor("2901", "Current Preset Data");
-BLECharacteristic powderDataChar(BLE_POWDER_DATA_GUID, BLERead | BLENotify, POWDER_DATA_SIZE, true);
-BLEDescriptor powderDataDescriptor("2901", "Powder Name");
-BLECharacteristic parameterCommandChar(BLE_PARAMETER_COMMAND_GUID, BLERead | BLEWrite | BLENotify, PARAMETER_COMMAND_SIZE, true);
-BLEDescriptor parameterCommandDescriptor("2901", "Parameter Command");
+BLECharacteristic presetDataChar(BLE_PRESET_DATA_GUID, BLERead | BLEWrite | BLENotify, PRESET_DATA_SIZE+4, true);  //TODO: fix this when preset_index moved in preset data structure
+//BLECharacteristic presetDataChar(BLE_PRESET_DATA_GUID, BLERead | BLEWrite | BLENotify, PRESET_DATA_SIZE+4);  
+BLEDescriptor presetDataDescriptor("2901", "Preset Data");
+BLECharacteristic presetListItemChar(BLE_PRESET_LIST_ITEM_GUID, BLERead | BLENotify, LIST_ITEM_SIZE);
+BLEDescriptor presetListItemDescriptor("2901", "Preset List Item");
+BLECharacteristic powderDataChar(BLE_POWDER_DATA_GUID, BLERead | BLENotify, POWDER_DATA_SIZE+4, true);  //TODO: fix this when powder_index moved in preset data structure
+BLEDescriptor powderDataDescriptor("2901", "Powder Data");
+BLECharacteristic powderListItemChar(BLE_POWDER_LIST_ITEM_CHAR_GUID, BLERead | BLENotify, LIST_ITEM_SIZE);
+BLEDescriptor powderListItemDescriptor("2901", "Powder List Item");
+
 
 /*
  * Setup Bluetooth Low Energy (BLE) 
@@ -95,28 +115,30 @@ bool initBLE() {
   BLE.setAdvertisedService(ptBLE_Service);
 
   // add descriptors to the charactaristics
-  commandChar.addDescriptor(commandDescriptor);
-  scaleStringChar.addDescriptor(scaleDataStringDescriptor);
+  parameterCommandChar.addDescriptor(parameterCommandDescriptor);
+  scaleWeightChar.addDescriptor(scaleWeightDescriptor);
   scaleTargetChar.addDescriptor(scaleTargetDescriptor);
   scaleCondChar.addDescriptor(scaleCondDescriptor);
   systemStateChar.addDescriptor(systemStateDescriptor);
   decelThreshChar.addDescriptor(decelThreshDescriptor);
   configDataChar.addDescriptor(configDataDescriptor);
   presetDataChar.addDescriptor(presetDataDescriptor);
+  presetListItemChar.addDescriptor(presetListItemDescriptor);
   powderDataChar.addDescriptor(powderDataDescriptor);
-  parameterCommandChar.addDescriptor(parameterCommandDescriptor);
+  powderListItemChar.addDescriptor(powderListItemDescriptor);
   
   // add the characteristic to the service
-  ptBLE_Service.addCharacteristic(commandChar);
-  ptBLE_Service.addCharacteristic(scaleStringChar);
+  ptBLE_Service.addCharacteristic(parameterCommandChar);
+  ptBLE_Service.addCharacteristic(scaleWeightChar);
   ptBLE_Service.addCharacteristic(scaleTargetChar);
   ptBLE_Service.addCharacteristic(scaleCondChar);
   ptBLE_Service.addCharacteristic(systemStateChar);
   ptBLE_Service.addCharacteristic(decelThreshChar);
   ptBLE_Service.addCharacteristic(configDataChar);
   ptBLE_Service.addCharacteristic(presetDataChar);
+  ptBLE_Service.addCharacteristic(presetListItemChar);
   ptBLE_Service.addCharacteristic(powderDataChar);
-  ptBLE_Service.addCharacteristic(parameterCommandChar);
+  ptBLE_Service.addCharacteristic(powderListItemChar);
 
   // add service
   BLE.addService(ptBLE_Service);
@@ -126,12 +148,13 @@ bool initBLE() {
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
   // assign event handlers for characteristics
-  commandChar.setEventHandler(BLEWritten, commandCharWritten);
   decelThreshChar.setEventHandler(BLEWritten, decelThreshCharWritten);
   parameterCommandChar.setEventHandler(BLEWritten, parameterCommandCharWritten);
+  presetDataChar.setEventHandler(BLEWritten, presetDataCharWritten);
 
   // set the initial value for the characteristics:
   // TODO: trigger the update function instead?
+  // TODO: what really needs to happen here?
   //Serial.println("Update data on BLE connection");
   //updateBLEData(true);
 
@@ -163,51 +186,6 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
 }
 
 /*
-#define BLE_COMMAND_REQ_CONFIG 0x01
-#define BLE_COMMAND_REQ_CURRENT_PRESET 0x10
-#define BLE_COMMAND_REQ_PRESET_LIST 0x20
-#define BLE_COMMAND_REQ_CURRENT_POWDER 0x30
-#define BLE_COMMAND_REQ_POWDER_LIST 0x40
-*/
-
-/*
- * Process a recieved command from the BLE Central.
- * Call respective handler function for the command.
- */
-void commandCharWritten(BLEDevice central, BLECharacteristic characteristic) {
-  // central wrote new value to characteristic, update LED
-  Serial.print("commandChar event, written: Value = ");
-  printHexData(characteristic.value(), characteristic.valueLength());
-  Serial.println();
-  int val = characteristic.value()[0];
-  switch (val) 
-  {
-    case BLE_COMMAND_REQ_CONFIG_DATA:
-      Serial.println("TODO: BLE transmit config data");
-      break;
-    case BLE_COMMAND_REQ_CURRENT_PRESET:      
-      Serial.println("BLE: Writing current preset data");
-      if (!g_presets.BLEWriteCurrentPreset(presetDataChar)) {  //TESTING:
-        Serial.println("BLE: Failed to write preset data.");
-      }
-      break;
-    case BLE_COMMAND_REQ_CURRENT_POWDER:
-      Serial.println("BLE: Writing current powder data");
-      if (!g_powders.BLEWriteCurrentPowder(powderDataChar)) {  //TESTING:
-        Serial.println("BLE: Failed to write powder data.");
-      }
-      break;
-    case BLE_COMMAND_REQ_POWDER_LIST:
-      Serial.println("TODO: BLE transmit powder list");
-      break;
-    default:
-      Serial.println("WARNING: unknown BLE command recieved");
-      //ignore everything else
-      break;
-    }
-}
-
-/*
  * Handler for decel threshold update from device slider
  * TODO: Write FRAM every update?  Use user action with button on phone?
  */
@@ -227,49 +205,147 @@ void decelThreshCharWritten(BLEDevice central, BLECharacteristic characteristic)
 }
 
 /*
+ * Handler for preset data update from central
+ */
+void presetDataCharWritten(BLEDevice central, BLECharacteristic characteristic) {
+  Serial.println("TODO: parse data and update preset at specified preset index.");
+  Serial.print("valueSize: ");
+  Serial.println(characteristic.valueSize());
+  Serial.print("valueLength: ");
+  Serial.println(characteristic.valueLength());
+  Serial.print("Data recieved: ");  
+  printByteData(characteristic.value(), characteristic.valueSize());
+
+}
+
+/*
  * Handler for parameter command
+ * See BLE Parameter command codes definitions above
  */
 void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteristic) {
-  // TODO: testing
-  Serial.println("Parameter Command recieved:");
-  printByteData(characteristic.value(), characteristic.valueLength());
-  Serial.println("Parse data ...");
+  static ListItemBuffer list_buffer; // buffer for writing a list item
+  static PresetDataStorage preset;  // buffer for preset data structure retrieval
+  static PowderDataStorage powder;  // buffer for preset data structure retrieval
+  static char name_buff[NAME_LEN+1];  // buffer for preset/powder names
   byte cmd = byte(characteristic.value()[0]);
-  int p = int(characteristic.value()[1]);
+  int parameter = int(characteristic.value()[1]);
+  int index = parameter -1;  //Parameter is Preset number, 1 based, preset list is 0 based
   switch (cmd) {
-    case BLE_COMMAND_REQ_PRESET_BY_INDEX:
-      Serial.println("TODO: write preset data for requested list index");
-      Serial.print("preset index parameter = ");
-      Serial.println(p);
+
+    case BLE_COMMAND_SET_CURRENT_PRESET:
+      Serial.print("Set current preset. Parameter: ");
+      Serial.print(parameter);
+      Serial.print(" Index: ");
+      Serial.println(index);
+      //TODO: replace this silliness with getting appropriate data structs from managers
+      //  and storing as unions in (scale or config?).  Probably refactor into scale.
+      g_presets.loadPreset(index);
+      g_config.setPreset(index);
+      g_presets.getPresetName(name_buff);
+      g_config.setPresetName(name_buff);
+      g_powders.loadPowder(g_presets.getPowderIndex());
+      g_powders.getPowderName(name_buff);
+      g_config.setPowderName(name_buff);
+      g_scale.setTarget(g_presets.getPresetChargeWeight());
+      g_config.setTargetWeight(g_presets.getPresetChargeWeight());  // TODO: REALLY NEED TO FIX THIS DUPLICATION!
+
+      if (!g_config.saveConfig()) { 
+        Serial.println("ERROR: could not save config.");
+      } else {
+        Serial.print("Current preset index ");
+        Serial.print(g_presets.getCurrentPreset());
+        Serial.print(" changed to ");
+        Serial.println(index);
+      }
+      displayUpdate(true);
+
+      //TODO:
+      
       break;
+
+    case BLE_COMMAND_SET_CURRENT_POWDER:
+      Serial.print("Set current powder. Parameter: ");
+      Serial.print(parameter);
+      Serial.print(" Index: ");
+      Serial.println(index);
+
+      //TODO: Am I using this command?
+      
+      break;
+
+    case BLE_COMMAND_REQ_PRESET_BY_INDEX:      
+      if ((index > 0) || (index < MAX_PRESETS)) {
+        BLEWritePresetDataAt(index);
+      } else {
+        Serial.print("ERROR: preset index out of range at ");
+        Serial.println(__LINE__);
+      }
+      break;
+
+    case BLE_COMMAND_REQ_PRESET_NAME_AT_INDEX:
+      if (g_presets.getBLEDataStruct(preset.raw_data, index)) {
+        if (preset._preset_data.preset_version != PRESETS_VERSION)  {
+          g_presets.getDefaults(preset.raw_data, sizeof(preset.raw_data));
+        } else {
+          snprintf(list_buffer.data.item_name, NAME_LEN+1, "%s", preset._preset_data.preset_name);
+        }
+        if (preset._preset_data.powder_index >= 0) {  //TODO: add empty flag to preset data struct
+          list_buffer.data.empty = false;  
+        } else {
+          list_buffer.data.empty = true;
+        }
+        list_buffer.data.list_index = parameter;
+        if (!presetListItemChar.writeValue(list_buffer.raw_data, LIST_ITEM_SIZE)) {Serial.println("BLE Failed to write preset list item.");}
+      } else {
+        Serial.println("ERROR: Failed to load preset buffer");
+      }
+      break;
+
+    case BLE_COMMAND_REQ_POWDER_BY_INDEX:
+      if ((index > 0) || (index < MAX_POWDERS)) {
+        BLEWritePowderDataAt(index);
+      } else {
+        Serial.print("ERROR: powder index out of range at ");
+        Serial.println(__LINE__);
+      }
+      break;
+
+    case BLE_COMMAND_REQ_POWDER_NAME_AT_INDEX:
+      if (g_powders.getBLEDataStruct(powder.raw_data, index)) {
+        if (powder._powder_data.powder_version != POWDERS_VERSION)  {
+          g_powders.getDefaults(powder.raw_data, sizeof(powder.raw_data));
+        } else {
+          snprintf(list_buffer.data.item_name, NAME_LEN+1, "%s", powder._powder_data.powder_name);
+        }
+        if (powder._powder_data.powder_factor > 0) {  //TODO: add empty flag to powder data struct
+          list_buffer.data.empty = false;
+        } else { 
+          list_buffer.data.empty = true; 
+        }
+        list_buffer.data.list_index = parameter;
+        if (!powderListItemChar.writeValue(list_buffer.raw_data, LIST_ITEM_SIZE)) { Serial.println("BLE Failed to write powder list item."); }
+      } else {
+        Serial.println("ERROR: Failed to load powder buffer");
+      }
+      break;
+
+    case BLE_COMMAND_SET_SYSTEM_STATE:
+      if (g_state.isValidState(parameter)) {
+          g_state.setState((PTState::state_t)parameter);
+          g_display_changed = true;
+          displayUpdate();
+      } else {
+          Serial.print("ERROR: parameter is an unknown state. Line: ");
+          Serial.print(__LINE__);
+      }
+      break;
+
     default:
-      Serial.println("Unknown parameter command");
+      Serial.print("Unknown command: ");
+      Serial.print(cmd);
+      Serial.print(", parameter: ");
+      Serial.println(parameter);
       break;
-  }
-}
-
-void printHexData(const unsigned char data[], int len) {
-  for (int i=0; i<len; i++) {
-    unsigned char b = data[i];
-    Serial.print(b, HEX);
-  }
-  Serial.println();
-}
-
-void printStringData(const unsigned char data[], int len){
-  char c;
-  for (int i=0; i<len; i++) {
-    c = toascii(data[i]);
-    Serial.print(c);
-  }
-  Serial.println();
-}
-
-void printByteData(const unsigned char data[], int len) {
-  char buff[100];
-  for (int i=0; i<len; i++) {
-    sprintf(buff, "byte %d = [%d]", i, byte(data[i]));
-    Serial.println(buff);
   }
 }
 
@@ -280,7 +356,8 @@ void printByteData(const unsigned char data[], int len) {
  */
 void updateBLEData(bool force) {
   static long _last_update = 0;
-  static char* buff = new char[32];
+  static char* name_buff = new char[32];
+  static uint8_t* value_buff = new uint8_t[5];
   static float _last_scale_weight = 0.0;
   static int _last_scale_cond = -1;
   static float _last_target_weight = 0.0;
@@ -290,6 +367,7 @@ void updateBLEData(bool force) {
   static int _last_scale_mode = -1;
 
   float scale_weight;
+  float target_weight;
   int scale_cond;
   int system_state; 
   float decel_thresh;
@@ -305,6 +383,7 @@ void updateBLEData(bool force) {
     _last_update = millis();
     if (force) { Serial.println("BLE forced update of data"); }
     scale_weight = g_scale.getWeight();
+    target_weight = g_config.getTargetWeight();
     scale_cond = g_scale.getCondition();
     system_state = g_state.getState(); 
     decel_thresh = g_config.getDecelThreshold(); 
@@ -314,39 +393,40 @@ void updateBLEData(bool force) {
     } else {
       scale_mode_changed = false;
     }
-
     //only update things if changed or forced
     if ((scale_weight != _last_scale_weight) || scale_mode_changed || force) {
       if (g_scale.getMode() == SCALE_MODE_GRAM) {
-        sprintf(buff, "%8.3f g", scale_weight);
+        value_buff[0] = 0;
       } else {
-        sprintf(buff, "%8.2f gn", scale_weight);
+        value_buff[0] = 1;
       }
-      if (!scaleStringChar.writeValue(buff)) {Serial.println("BLE Failed to write scale str value.");}
+      memcpy(&value_buff[1], &scale_weight, 4);
+      if (!scaleWeightChar.writeValue(value_buff, 5)) { Serial.println("BLE Failed to write scale weight."); }
       _last_scale_weight = scale_weight;
     }
-    if ((g_config.getTargetWeight() != _last_target_weight) || scale_mode_changed || force) {
+    if ((target_weight != _last_target_weight) || scale_mode_changed || force) {
       if (g_scale.getMode() == SCALE_MODE_GRAM) {
-        sprintf(buff, "%6.3f g", (g_config.getTargetWeight() * GM_TO_GN_FACTOR));
+        value_buff[0] = 0;
       } else {
-        sprintf(buff, "%6.2f gn", g_config.getTargetWeight());
-      }
-      if (!scaleTargetChar.writeValue(buff)) {Serial.println("BLE Failed to write scale str value.");}
-      _last_target_weight= g_config.getTargetWeight();
+        value_buff[0] = 1;
+      } 
+      memcpy(&value_buff[1], &target_weight, 4);
+      if (!scaleTargetChar.writeValue(value_buff, 5)) { Serial.println("BLE Failed to write target weight."); }
+      _last_target_weight = target_weight;
     }
     if ((scale_cond != _last_scale_cond) || force) {
-      sprintf(buff, "%.30s", g_scale.getConditionLongName());
-      if (!scaleCondChar.writeValue(buff)) {Serial.println("BLE Failed to write scale condition.");}
+      //memcpy(value_buff[0], &scale_cond, 4);
+      if (!scaleCondChar.writeValue(scale_cond)) { Serial.println("BLE Failed to write scale condition."); }
       _last_scale_cond = scale_cond;
     }
     if ((system_state != _last_system_state) || force) {
-      sprintf(buff, "%.30s", g_state.getStateName());
-      if (!systemStateChar.writeValue(buff)) {Serial.println("BLE Failed to write system state.");}
+      //memcpy(value_buff[0], &system_state, 4);
+      if (!systemStateChar.writeValue(system_state)) { Serial.println("BLE Failed to write system state."); }
       _last_system_state = system_state;
     }
     if ((decel_thresh != _last_decel_thresh) || force) {
-      sprintf(buff, "%3.1f", g_config.getDecelThreshold());
-      if (!decelThreshChar.writeValue(buff)) {Serial.println("BLE Failed to write decel thresh.");}
+      //memcpy(value_buff[0], &decel_thresh, 4);
+      if (!decelThreshChar.writeValue(decel_thresh)) { Serial.println("BLE Failed to write decel thresh."); }
       _last_decel_thresh = decel_thresh;
     }    
     if (g_config.isBLEUpdateNeeded()) {
@@ -356,9 +436,75 @@ void updateBLEData(bool force) {
     }
     if ((g_config.getPreset() != _last_preset_number) || force)
     {
-      if (!g_presets.BLEWriteCurrentPreset(presetDataChar)) {Serial.println("BLE Failed to write preset data.");}
-      if (!g_powders.BLEWriteCurrentPowder(powderDataChar)) {Serial.println("BLE Failed to write powder data.");}
+      //if (!g_presets.BLEWriteCurrentPreset(presetDataChar)) {Serial.println("BLE Failed to write preset data.");}
+      BLEWritePresetDataAt(g_config.getPreset());
+      //if (!g_powders.BLEWriteCurrentPowder(powderDataChar)) {Serial.println("BLE Failed to write powder data.");}
+      BLEWritePowderDataAt(g_powders.getCurrentPowder()); //TODO: <- is this right?
       _last_preset_number = g_config.getPreset();
     }
   }
 }
+
+/////////////////////
+// Support functions for both dynamic and on demand BLE updates:
+/////////////////////
+
+void BLEWritePresetDataAt(int index) {
+  static byte preset_buffer[PRESET_DATA_SIZE + sizeof(index)];  //TODO: eventually merge index into preset data structure stored in FRAM
+  static PresetDataStorage preset;  
+  if (!g_presets.getBLEDataStruct(preset.raw_data, index)) {
+    Serial.println("ERROR: failed to load requested preset data.");  //TODO: any good way to handle this?
+  } else {
+    if (preset._preset_data.preset_version != PRESETS_VERSION)  {
+      //Serial.println("Preset data at: Version mismatch: Set entire preset data structure to defaults.");
+      g_presets.getDefaults(preset.raw_data, sizeof(preset.raw_data));
+    }
+    memcpy(preset_buffer, &index, sizeof(index));
+    memcpy(preset_buffer + sizeof(index), preset.raw_data, PRESET_DATA_SIZE);
+    if (!presetDataChar.writeValue(preset_buffer, sizeof(preset_buffer))) { Serial.println("BLE Failed to write preset data."); }
+  } 
+}
+
+void BLEWritePowderDataAt(int index) {
+  static byte powder_buffer[POWDER_DATA_SIZE + sizeof(index)];  //TODO: eventually merge index into powder data structure stored in FRAM
+  static PowderDataStorage powder;  
+  if (!g_powders.getBLEDataStruct(powder.raw_data, index)) {
+    Serial.println("ERROR: failed to load requested powder data.");  //TODO: any good way to handle this?
+  } else {
+    if (powder._powder_data.powder_version != POWDERS_VERSION)  {
+      //Serial.println("Powder data at: Version mismatch: Set entire powder data structure to defaults.");
+      g_powders.getDefaults(powder.raw_data, sizeof(powder.raw_data));
+    }
+    memcpy(powder_buffer, &index, sizeof(index));
+    memcpy(powder_buffer + sizeof(index), powder.raw_data, POWDER_DATA_SIZE);
+    if (!powderDataChar.writeValue(powder_buffer, sizeof(powder_buffer))) { Serial.println("BLE Failed to write powder data."); }
+  } 
+}
+
+void printHexData(const unsigned char data[], int len) {
+  for (int i=0; i<len; i++) {
+    unsigned char b = data[i];
+    Serial.print(b, HEX);
+  }
+  Serial.println();
+} 
+
+void printStringData(const unsigned char data[], int len){
+  char c;
+  for (int i=0; i<len; i++) {
+    c = toascii(data[i]);
+    Serial.print(c);
+  }
+  Serial.println();
+} 
+
+void printByteData(const unsigned char data[], int len) {
+  static char buff[5];
+  Serial.print("[");
+  for (int i=0; i<len-1; i++) {
+    sprintf(buff, "%d,", byte(data[i]));
+    Serial.print(buff);
+  }
+    sprintf(buff, "%d]", byte(data[len-1]));
+    Serial.print(buff);
+} 

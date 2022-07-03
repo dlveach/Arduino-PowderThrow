@@ -73,8 +73,12 @@ class PowderManager
     bool resetBuffer();
     bool isDirty();
     bool isPowderDefined();
-    bool BLEWriteCurrentPowder(BLECharacteristic);
+    //bool BLEWriteCurrentPowder(BLECharacteristic);
     
+    // BLE support
+    bool getBLEDataStruct(byte[], int);
+    bool getDefaults(byte[], int);
+
   private:
 
     // Vars
@@ -86,8 +90,8 @@ class PowderManager
     char _error_buff[100];
     
     // Functions
-    boolean _writePowderData();
-    boolean _readPowderData();
+    boolean _writePowderData(int);
+    boolean _readPowderData(byte[], int);
 };
 
 #endif

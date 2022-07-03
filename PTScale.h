@@ -2,10 +2,12 @@
  * PTScale.h
  * 
  * A&D FXi Scale Communication and support
+ *
  */
 #include "Arduino.h"
 #include "PTState.h"
 #include "PTConfig.h"
+//TODO: include presets and powders, contain current data for each, add setters/getters, use in running state & display
 
 #ifndef PTSCALE_H
 #define PTSCALE_H 
@@ -15,8 +17,9 @@
 #define SERIAL_TIMEOUT 100          //Millis before serial comm timeout
 #define MIN_CALIBRATION_WEIGHT -20  //in grains.  A "dead zone" in case scale drifts a tiny bit off zero.
 #define SCALE_MAX_CON_FAILS 20      // Max serial communication fails before setting connected = false.
+#define GM_TO_GN_FACTOR 0.06479891      // grams per grain conversion factor
 
-static float GM_TO_GN_FACTOR = 0.06479891; // grams per grain conversion factor
+//static float GM_TO_GN_FACTOR = 0.06479891; // grams per grain conversion factor
 static const char* ConditionNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Cls","On Tgt","Over Tgt","Undef"};
 static const char* ConditionLongNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Close","On Target","Over Target","Undefined"};
 static const char* ModeNames[] = {"Milligram","Grain"};
@@ -27,9 +30,7 @@ static const char* ModeNames[] = {"Milligram","Grain"};
 class PTScale
 {
   public:
-
-    enum condition_t 
-    {
+    enum condition_t {
       not_ready,
       zero,
       pan_off,
@@ -75,6 +76,7 @@ class PTScale
     // Vars
     PTState _ptstate;         // The PTState object.
     PTConfig _ptconfig;       // The PTConfig object.
+
     float _target;            // The weight target.
     bool _calibrated;         // Has the setup calibration been done successfully
     bool _connected;          // State of Serial connection to scale

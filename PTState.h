@@ -48,7 +48,7 @@ class PTState
     PTState(state_t state = pt_undefined);
 
     // Getters/Setters
-    int setState(state_t state);
+    void setState(state_t state);
     int getState();
     const char* getStateName();
     const char* getStateLongName();
@@ -59,6 +59,7 @@ class PTState
     void BtnDown();
     void BtnLeft();
     void BtnRight();
+    bool isValidState(int);
     
   private:
     state_t _state;

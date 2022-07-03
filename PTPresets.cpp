@@ -41,6 +41,8 @@ bool PresetManager::isDefined()
  */
 int PresetManager::getCurrentPreset()
 {
+  //Serial.print("getCurrentPreset() _cur_preset: ");
+  //Serial.println(_cur_preset);
   return (_cur_preset);  
 }
 
@@ -277,28 +279,39 @@ void PresetManager::decBulletWeight() {
 /*
  * Return true if preset buffer data changed, falase if not.
  */
-bool PresetManager::isDirty()
-{
+bool PresetManager::isDirty() {
   return (_dirty);
 }
 
 /*
- * Write the current preset buffer to the supplied BLECharactaristic
- * Returns true if succesful.  False if not.
+/*
+ * BLE support function.  Load & return Preset data struct for use in BLE comm.
+ *  NOTE: this has no affect on current preset buffer, uses an independent buffer 
+ *  that should not be modified.  It is never saved.
  */
-bool PresetManager::BLEWriteCurrentPreset(BLECharacteristic BLEChar) {
-  if (BLEChar.writeValue(_preset_buffer.raw_data, PRESET_DATA_SIZE)) {
-    return (true);
+bool PresetManager::getBLEDataStruct(byte buffer[], int index) {
+  if ((index < 0) || (index > MAX_PRESETS)) {
+    DEBUGLN(F("ERROR: loadPreset(): Preset index out of range."));
+    Serial.println("ERROR: loadPreset(): Preset index out of range.");
+    return false;
+  } else if (!_readPresetData(buffer, index))  {
+    DEBUGLN(F("loadPreset(): ERROR: could not read FRAM storage."));
+    Serial.println("loadPreset(): ERROR: could not read FRAM storage.");
+    return false;
   }
-  return (false);
+  return (true);
 }
 
 /*
- * Write the preset list to the supplied BLECharactaristic
- * Returns true if succesful.  False if not.
+ *  Load the supplied buffer with preset defaults.
  */
-bool PresetManager::BLEWritePresetList(BLECharacteristic BLEChar) {
-  
+bool PresetManager::getDefaults(byte buffer[], int size) {
+  if (size != PRESET_DATA_SIZE) {
+    Serial.println("ERROR: getDefaults(): preset buffer size != defaults size");
+    return (false);
+  }
+  memcpy(buffer, _defaults.raw_data, PRESET_DATA_SIZE);
+  return (true);
 }
 
 /*
@@ -307,27 +320,23 @@ bool PresetManager::BLEWritePresetList(BLECharacteristic BLEChar) {
  * If the preset data is out of sync, it is intialized to default and saved.
  * Returns true if successful, false if not.
  */ 
-boolean PresetManager::loadPreset(int index)
-{
-  if ((index < 0) || (index > MAX_PRESETS))
-  {
+boolean PresetManager::loadPreset(int index) {
+  if ((index < 0) || (index > MAX_PRESETS)) {
     DEBUGLN(F("ERROR: loadPreset(): Preset index out of range."));
     return (false); 
   }
   _cur_preset = index;
-  //DEBUGLN(F("loadPreset(): reading FRAM storage for preset."));
-  if (!_readPresetData()) 
-  {
+  //char _buff[100];
+  //sprintf(_buff, "loadPreset(): read FRAM for preset %d, index %d", _cur_preset, _cur_preset + 1);
+  //Serial.println(_buff);
+  if (!_readPresetData(_preset_buffer.raw_data, _cur_preset)) {
     DEBUGLN(F("loadPreset(): ERROR: could not read FRAM storage."));
     return (false);
-  }
-  else
-  {
-    if (_preset_buffer._preset_data.preset_version != PRESETS_VERSION) 
-    {
-      DEBUGP(F("loadPreset(): Preset version "));
-      DEBUGP(_preset_buffer._preset_data.preset_version);
-      DEBUGLN(F(" out of sync, setting to defaults."));    
+  } else {
+    if (_preset_buffer._preset_data.preset_version != PRESETS_VERSION)  {
+      Serial.print("loadPreset(): Preset version ");
+      Serial.print(_preset_buffer._preset_data.preset_version);
+      Serial.println(" out of sync, setting to defaults.");    
       savePreset(true);
     }
   }
@@ -338,10 +347,8 @@ boolean PresetManager::loadPreset(int index)
 /*
  * Reset current preset (restore to saved data)
  */
-boolean PresetManager::resetCurrentPreset()
-{
-  if (_dirty)
-  {
+boolean PresetManager::resetCurrentPreset() {
+  if (_dirty) {
     loadPreset(_cur_preset);
   }
 }
@@ -352,10 +359,8 @@ boolean PresetManager::resetCurrentPreset()
  * saving.  Defaults to false.
  * Returns true if successful, false if not.
  */
-boolean PresetManager::savePreset(boolean init)
-{
-  if (init)
-  {
+boolean PresetManager::savePreset(boolean init) {
+  if (init) {
     //DEBUGLN(F("savePreset(): Initializing preset to defaults."));
     _preset_buffer = _defaults;
     _dirty = true;
@@ -363,8 +368,7 @@ boolean PresetManager::savePreset(boolean init)
   if (!_dirty) { return (true); }  //nothing to save
   //sprintf(_error_buff, "savePreset(): Saving preset %02d to FRAM storage.");
   //DEBUGLN(_error_buff);
-  if (_writePresetData())
-  {
+  if (_writePresetData(_cur_preset)) {
     _dirty = false;
     return (true);
   }
@@ -372,13 +376,18 @@ boolean PresetManager::savePreset(boolean init)
 }
 
 /*
- * Writes the current preset buffer to FRAM.
- * FRAM location determined from current preset index.
+ * Writes FRAM data from the preset buffer at the location determined from 
+ * the supplied preset list index.
+ *
+ * Params,
+ * index: 0 base list index
+ *
  * Returns true if successful, false if not.
  */
-boolean PresetManager::_writePresetData()
+boolean PresetManager::_writePresetData(int index)
 {
-  uint16_t addr = PRESETS_ADDR_BASE + _cur_preset * PRESET_DATA_SIZE;
+//  uint16_t addr = PRESETS_ADDR_BASE + _cur_preset * PRESET_DATA_SIZE;
+  uint16_t addr = PRESETS_ADDR_BASE + index * PRESET_DATA_SIZE;
   if ((addr + PRESET_DATA_SIZE-1) > FRAM_SIZE)
   {
     DEBUGLN(F("FATAL: _writePresetData(): FRAM storage address overflow."));
@@ -395,13 +404,17 @@ boolean PresetManager::_writePresetData()
 }
 
 /*
- * Reads the FRAM into the preset buffer.
- * FRAM location determined from current preset index.
+ * Reads FRAM data into the preset buffer from the location determined from
+ * the supplied preset list index.
+ *
+ * Params,
+ * index: 0 base list index
+ *
  * Returns true if successful, false if not.
  */
-boolean PresetManager::_readPresetData()
+boolean PresetManager::_readPresetData(byte buffer[], int index)
 {
-  uint16_t addr = PRESETS_ADDR_BASE + _cur_preset * PRESET_DATA_SIZE;
+  uint16_t addr = PRESETS_ADDR_BASE + index * PRESET_DATA_SIZE;
   if ((addr + PRESET_DATA_SIZE-1) > FRAM_SIZE) 
   {
     DEBUGLN(F("FATAL: _readPresetData(): FRAM storage address overflow."));
@@ -410,11 +423,15 @@ boolean PresetManager::_readPresetData()
   int idx;
   for (int i=0; i<PRESET_DATA_SIZE; i++) 
   {
-    _preset_buffer.raw_data[i] = _fram.read8(addr + i);
+    //_preset_buffer.raw_data[i] = _fram.read8(addr + i);
+    //buffer.raw_data[i] = _fram.read8(addr + i);
+    buffer[i] = _fram.read8(addr + i);
     idx = i;
   }
-  //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
-  //DEBUGLN(_error_buff);  
+  //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx+1);
+  //Serial.println(_error_buff);  
+  //printBytes(buffer.raw_data, PRESET_DATA_SIZE);
+  //printBytes(buffer, PRESET_DATA_SIZE);
   return (true);
 }
 

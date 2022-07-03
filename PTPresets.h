@@ -23,7 +23,7 @@
  * Data structure for a preset in the list.
  */
 typedef struct _preset_data_t {
-  float charge_weight;            //powder grains
+  float charge_weight;            //powder grains (-1 if preset "empty")
   int powder_index;               //index into powder list
   char preset_name[NAME_LEN+1];   //name of preset (load)
   char bullet_name[NAME_LEN+1];   //name of bullet
@@ -87,8 +87,10 @@ class PresetManager
     bool isDirty();
     bool resetCurrentPreset();
     bool isDefined();
-    bool BLEWriteCurrentPreset(BLECharacteristic);
-    bool BLEWritePresetList(BLECharacteristic);
+
+    // BLE support
+    bool getBLEDataStruct(byte[], int);
+    bool getDefaults(byte[], int);
       
   private:
 
@@ -97,14 +99,13 @@ class PresetManager
     Adafruit_FRAM_I2C _fram;
     PresetDataStorage _preset_buffer;  // storage read/write buffer
     PresetDataStorage _defaults = { 0.0, -1, "EMPTY           ", "                ", 0, "                ", PRESETS_VERSION};
-    PresetDataStorage _current;
     boolean _dirty;
     int _cur_preset;
     char _error_buff[100];  //TODO: is this used?
     
     // Functions
-    boolean _writePresetData();
-    boolean _readPresetData();
+    boolean _writePresetData(int);
+    boolean _readPresetData(byte[], int);
 };
 
 #endif

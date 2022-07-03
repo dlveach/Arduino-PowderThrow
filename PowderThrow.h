@@ -112,6 +112,9 @@ int g_trickler_cal_speed = MAX_TRICKLER_SPEED * TRICKLER_DIRECTION;  //init at m
 int g_thrower_top_pos = -1;     // not calibrated by default
 int g_thrower_bottom_pos = -1;  // not calibrated by default
 
+#define G_MSG_LEN 100
+char g_msg[G_MSG_LEN];          // string buffer for debug print messagess
+
 //display globals
 bool g_display_changed = false;
 int g_cur_line = 0;
@@ -123,6 +126,6 @@ int g_disp_page = 1;
 //function prototypes
 void setTricklerSpeed(bool force=false);
 void updateBLEData(bool force=false);
-void displayUpdate();
+void displayUpdate(bool force=false);
 
 #endif  // POWDER_THROW_DEFINITIONS_H
