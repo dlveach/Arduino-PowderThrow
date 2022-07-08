@@ -10,12 +10,10 @@
 /*
  * Constructor
  */
-PTConfig::PTConfig() 
-{
+PTConfig::PTConfig() {
   _config_buffer = _defaults;
   _dirty = false;
   // initialize indirect (copied) data
-  _preset = -1;           // current preset index
   _preset_name[0] = 0x00; // from current preset
   _target_weight = -1;    // from current preset
   _powder_name[0] = 0x00; // from current preset -> powder
@@ -28,8 +26,7 @@ PTConfig::PTConfig()
  * Returns true if successful, false if not.
  * Will set a system error.
  */
-bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd)
-{
+bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd) {
   _fram = fram;
   _version_reset = false;
   if (!loadConfig()) {
@@ -46,175 +43,97 @@ bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd)
   return (true);
 }
 
-/*
- *
- */
-//bool isVersionOutOfDate() { return _versionReset; }
+bool PTConfig::isRunReady() { return ((_target_weight > 0) && (_kernel_factor > 0)); }
 
-/*
- * 
- */
 bool PTConfig::isBLEUpdateNeeded() { return (_updateBLE); }
 
-/*
- * 
- */
 bool PTConfig::isDirty() { return (_dirty); }
 
-/*
- * Return config version.
- */
 int PTConfig::getVersion() { return (_config_buffer._config_data.config_version); }
 
-/*
- *
- */
 int PTConfig::getPreset() {  return (_config_buffer._config_data.preset); }
 
-/*
- * 
- */
 void PTConfig::setPreset(int value) {
   _config_buffer._config_data.preset = value;
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
- * 
- */
 float PTConfig::getFcurveP() {  return (_config_buffer._config_data.fscaleP);  }
 
-/*
- * 
- */
 void PTConfig::setFcurveP(float value) {
   _config_buffer._config_data.fscaleP = value;
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
- * 
- */
 float PTConfig::getDecelThreshold() {  return (_config_buffer._config_data.decel_threshold);  }
 
-/*
- * 
- */
 void PTConfig::setDecelThreshold(float value) {
   _config_buffer._config_data.decel_threshold = value;
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
- * 
- */
 float PTConfig::getBumpThreshold() {  return (_config_buffer._config_data.bump_threshold); }
 
-/*
- * 
- */
 void PTConfig::setBumpThreshold(float value) {
   _config_buffer._config_data.bump_threshold = value;
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
- * 
- */
 int PTConfig::getDecelLimit() {  return (_config_buffer._config_data.decel_limit); }
 
-/*
- * 
- */
 void PTConfig::setDecelLimit(int value) {
   _config_buffer._config_data.decel_limit = value;
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
- * TODO: add this to GUI to configure
- */
 float PTConfig::getGnTolerance() { return (_config_buffer._config_data.gn_tolerance); }
 
-/*
- * 
- */
-void PTConfig::setGnTolerance(float value)
-{
+void PTConfig::setGnTolerance(float value) {
   _config_buffer._config_data.gn_tolerance = value;  
   _dirty = true;
   _updateBLE = true;
 }
 
-/*
-float PTConfig::getMgTolerance()
-{
-  return (_config_buffer._config_data.mg_tolerance);  
+int PTConfig::getTricklerSpeed() {
+  return (_config_buffer._config_data.trickler_speed);  
 }
 
-void PTConfig::setMgTolerance(float value)
-{
-  _config_buffer._config_data.mg_tolerance = value;  
+void PTConfig::setTricklerSpeed(int value) {
+  _config_buffer._config_data.trickler_speed = value;  
   _dirty = true;
 } 
-*/
 
-/*
- * 
- */
 char* PTConfig::getPresetName() { return (_preset_name); }
 
-/*
- * 
- */
 void PTConfig::setPresetName(char* buff) {
   strncpy(_preset_name, buff, NAME_LEN);
   _preset_name[NAME_LEN]=0;
 }
 
-/*
- * 
- */
 char* PTConfig::getPowderName() { return (_powder_name); }
 
-/*
- * 
- */
 void PTConfig::setPowderName(char* buff) {
   strncpy(_powder_name, buff, NAME_LEN);
   _powder_name[NAME_LEN]=0;
 }
 
-/*
- * 
- */
 float PTConfig::getKernelFactor() { return (_kernel_factor); }
 
-/*
- * 
- */
 void PTConfig::setKernelFactor(float value) { _kernel_factor = value; }
 
-/*
- *
- */
 void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
-/*
- *
- */
 float PTConfig::getTargetWeight() { return (_target_weight); }
 
 /*
  * Reset system config to current config buffer.
  */
 boolean PTConfig::resetConfig() {
-  //DEBUGLN(F("resetConfig(): reading FRAM storage for config."));
   if (!_readConfigData())  {
     DEBUGLN(F("resetConfig(): ERROR: could not read FRAM storage."));
     return (false);
@@ -261,9 +180,7 @@ boolean PTConfig::saveConfig(boolean init) {
   return (false);
 }
 
-/*
- * 
- */
+// TODO: move this to PTBLE.ino?
  bool PTConfig::updateBLE(BLECharacteristic BLEChar) {
    if (BLEChar.writeValue(_config_buffer.raw_data, CONFIG_DATA_SIZE)) {
      _updateBLE = false;
@@ -324,7 +241,7 @@ void PTConfig::printConfig() {
   DEBUGLN(buff);  
   sprintf(buff, "Config GN Tol: %-5.3f", _config_buffer._config_data.gn_tolerance);
   DEBUGLN(buff);
-  sprintf(buff, "Config MG Tol: %-5.3f", _config_buffer._config_data.mg_tolerance);
+  sprintf(buff, "Config Trickler Speed: %-5d", _config_buffer._config_data.trickler_speed);
   DEBUGLN(buff);  
   sprintf(buff, "Config Preset Index: %-2d", _config_buffer._config_data.preset);
   DEBUGLN(buff);

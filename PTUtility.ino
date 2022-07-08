@@ -40,9 +40,7 @@ void printBytes(byte addr[], int byte_count) {
   Serial.println(buff);  
 }
 
-/*
- * Overwrite entire FRAM with 0x00 to erase all storage.
- */
+/*** Overwrite entire FRAM with 0x00 to erase all storage. ***/
 void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   DEBUGP(F("Zeroing out FRAM "));
   uint16_t addr = CONFIG_DATA_ADDR;
@@ -58,11 +56,18 @@ void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   DEBUGLN(F("FRAM zeroed out."));
 }
 
-/*
- * Handle System Error.
- */
-void util_handleSystemError(String msg = (F("Unknown sys error.")))
-{
+//TODO: filename and line no in displaySystemError
+void logError(String errMsg, String fileName, int lineNo, bool fatal) {
+  // Using Strings here ok, probably fatal anyway.
+  String msg = "ERROR: " + errMsg;
+  if (fileName != "") { msg = msg + ": " + fileName; }
+  if (lineNo > 0) { msg = msg + " at " + String(lineNo); }
+  DEBUGLN(msg);
+  if (fatal) { displaySystemError(); }
+}
+
+/*** Handle System Error. ***/
+void util_handleSystemError(String msg) {
   g_state.setState(PTState::pt_error);
   g_state.setSystemMessage(msg);
   displaySystemError();
@@ -75,21 +80,13 @@ void util_handleSystemError(String msg = (F("Unknown sys error.")))
    http://playground.arduino.cc/Main/Fscale
 
  ********************************************/
-void util_setFscaleCurve(float* _curve_map, float _fscaleP = 1.0)
-{
-  // Setup fscale curve
-  for (int j = 1; j <= 100; j++)
-  {
+void util_setFscaleCurve(float* _curve_map, float _fscaleP = 1.0) {
+  for (int j = 1; j <= 100; j++) {
     _curve_map[j] = fscale(0, 100, 0, 100, j, _fscaleP);
   }
   //dumpFCurve(); // Uncomment to debug
 }
-
-/*
- * 
- */
-float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve)
-{
+float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve) {
   float OriginalRange = 0;
   float NewRange = 0;
   float zeroRefCurVal = 0;
@@ -106,24 +103,15 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
   curve = pow(10, curve); // convert linear scale into lograthimic exponent for other pow function
 
   // Check for out of range inputValues
-  if (inputValue < originalMin)
-  {
-    inputValue = originalMin;
-  }
-  if (inputValue > originalMax)
-  {
-    inputValue = originalMax;
-  }
+  if (inputValue < originalMin) { inputValue = originalMin; }
+  if (inputValue > originalMax) { inputValue = originalMax; }
 
   // Zero Refference the values
   OriginalRange = originalMax - originalMin;
 
-  if (newEnd > newBegin)
-  {
-    NewRange = newEnd - newBegin;
-  }
-  else
-  {
+  if (newEnd > newBegin) { 
+    NewRange = newEnd - newBegin; 
+  } else {
     NewRange = newBegin - newEnd;
     invFlag = 1;
   }
@@ -132,17 +120,12 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
   normalizedCurVal  =  zeroRefCurVal / OriginalRange;   // normalize to 0 - 1 float
 
   // Check for originalMin > originalMax  - the math for all other cases i.e. negative numbers seems to work out fine
-  if (originalMin > originalMax )
-  {
-    return 0;
-  }
+  if (originalMin > originalMax ) { return 0; }
 
-  if (invFlag == 0)
-  {
+  if (invFlag == 0) {
     rangedValue =  (pow(normalizedCurVal, curve) * NewRange) + newBegin;
-  }
-  else
-  { // invert the ranges
+  } else { 
+    // invert the ranges
     rangedValue =  newBegin - (pow(normalizedCurVal, curve) * NewRange);
   }
   return rangedValue;
@@ -151,16 +134,13 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
 /*
  * Testing function.  Dump the FCurve to Serial.
  */
-void dumpFCurve()
-{
-  for (int i=1; i<=100; ++i)
-  {
+void dumpFCurve() {
+  for (int i=1; i<=100; ++i) {
     DEBUGP(F("FCurve["));
     DEBUGP(i);
     DEBUGP(F("] = "));
     DEBUGLN(g_curve_map[i]);
   }
-  
 }
 
 /*
@@ -183,8 +163,7 @@ void dumpFCurve()
    60 };
  */
 #ifdef DEBUG_SERIAL
-void debugTICErrors(uint32_t errors)
-{
+void debugTICErrors(uint32_t errors) {
   if (errors & (1 << (uint8_t)TicError::IntentionallyDeenergized)) { Serial.println(F("IntentionallyDeenergized error")); }
   if (errors & (1 << (uint8_t)TicError::MotorDriverError)) { Serial.println(F("motor driver error")); }
   if (errors & (1 << (uint8_t)TicError::LowVin)) { Serial.println(F("LowVin error")); }
@@ -201,8 +180,5 @@ void debugTICErrors(uint32_t errors)
   if (errors & (1 << (uint8_t)TicError::EncoderSkip)) { Serial.println(F("EncoderSkip  error")); }
 }
 #else
-void debugTICErrors(uint32_t errors)
-{
-  return;
-}
+void debugTICErrors(uint32_t errors) { return; }
 #endif

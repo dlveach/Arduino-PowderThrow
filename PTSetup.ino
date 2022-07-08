@@ -89,8 +89,7 @@ void setup() {
 
   // Initialize FRAM
   Adafruit_FRAM_I2C fram = Adafruit_FRAM_I2C();
-  if (!fram.begin())
-  {  
+  if (!fram.begin()) {  
     DEBUGLN(F("FRAM I2C comm err"));
     util_handleSystemError(F("FRAM I2C comm err"));
   }
@@ -106,8 +105,7 @@ void setup() {
   //**********************************************************************
 
   // Initialize config
-  if (!g_config.init(fram, g_lcd))
-  {
+  if (!g_config.init(fram, g_lcd)) {
     DEBUGLN(F("System halt.  Unable to load config."));
     delay(100);
     while (1) delay(10);
@@ -119,8 +117,7 @@ void setup() {
   //delay (500);
 
   // Initialize Preset Manager
-  if (!g_presets.init(fram, g_config))
-  {
+  if (!g_presets.init(fram, g_config.getPreset())) {
     DEBUGLN(F("System halt.  Unable to init Preset Manager."));
     delay(100);
     while (1) delay(10);
@@ -132,8 +129,7 @@ void setup() {
   //delay (500);
 
   //Initialize Powder Manager
-  if (!g_powders.init(fram, g_presets.getPowderIndex()))
-  {
+  if (!g_powders.init(fram, g_presets.getPowderIndex())) {
     DEBUGLN(F("System halt.  Unable to init Powder Manager."));
     delay(100);
     while (1) delay(10);
@@ -181,16 +177,13 @@ void setup() {
   g_LED_Blu.setOn();
   updateLEDs();
   // Setup scale   
-  while (!g_scale.isConnected())
-  {
-    if (g_scale.init(g_state, g_config))
-    {
+  while (!g_scale.isConnected()) {
+    if (g_scale.init(g_config)) {
       DEBUGLN(F("Scale serial connection established."));
       g_lcd.setCursor(0,2);
       g_lcd.print(F("Scale connected.    "));
       delay (500);  
-      while (!g_scale.isCalibrated())
-      {
+      while (!g_scale.isCalibrated()) {
         calibrateScale();
         if (!g_scale.isCalibrated()) { 
           //try agian
@@ -212,9 +205,7 @@ void setup() {
       g_lcd.setCursor(0,3);
       g_lcd.print(F("                    "));  
       delay (500);
-    }
-    else
-    {
+    } else {
       //try again
       DEBUGLN(F("WARNING: Scale serial connection failed."));
       g_lcd.setCursor(0,2);
@@ -272,8 +263,7 @@ void setup() {
 /*
  * DEBUG 
  */
-void dumpSystemEnv()
-{
+void dumpSystemEnv() {
 #ifdef DEBUG_SERIAL
   DEBUGLN();
   DEBUGLN(F("***** System Configuration *****"));
@@ -292,8 +282,7 @@ void dumpSystemEnv()
   g_scale.printConfig();
   DEBUGLN();
   DEBUGP(F("TIC step mode = "));
-  switch (g_TIC_trickler.getStepMode())
-  {
+  switch (g_TIC_trickler.getStepMode()) {
     case TicStepMode::Microstep1:
       DEBUGLN(F("Full step"));
       break;
@@ -342,8 +331,7 @@ void dumpSystemEnv()
  * During setup.
  * Calibrate the scale for pan on and pan off.
  */
-void calibrateScale()
-{
+void calibrateScale() {
   // Pan on scale
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Put pan on scale,   "));
@@ -366,13 +354,9 @@ void calibrateScale()
  * DeEnergize setpper, have user manually move thrower to 
  * home pos and set in thrower controller.  Engergize stepper.
  */
- void setThrowerHome()
- {
+ void setThrowerHome() {
   DEBUGLN(F("Calibrating thrower home"));
-  if (g_TIC_thrower.getEnergized())
-  {
-    g_TIC_thrower.deenergize();
-  }
+  if (g_TIC_thrower.getEnergized()) { g_TIC_thrower.deenergize(); }
   delay(100);
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Move thrower home   "));

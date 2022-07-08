@@ -14,7 +14,8 @@
 /******************************************************
  * Funciton templates
  */
-void util_handleSystemError(String msg);
+void logError(String errMsg = "", String fileName = "", int lineNo = -1, bool fatal = false);
+void util_handleSystemError(String msg = (F("Unknown sys error.")));
 void util_setFscaleCurve(float* _curve_map, float _fscaleP);
 void util_eraseFRAM(Adafruit_FRAM_I2C _fram);
 char incChar(char);

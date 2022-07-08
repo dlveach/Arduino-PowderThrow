@@ -15,8 +15,17 @@
 #define NAME_LEN 16 //avoiding cirlular dep. Dup defs in PTPresets.h and PTPowders.h  TODO: move to top level .h?
 
 #define FRAM_SIZE 32768  //max 32K Fram address
-#define CONFIG_VERSION 10003  // unique version ID
+#define CONFIG_VERSION 10004  // unique version ID
 #define CONFIG_DATA_ADDR 0x0  //base memory location of config data
+
+//Config Defaults
+#define DEFAULT_PRESET 0
+#define DEFAULT_FCURVEP -1.5
+#define DEFULT_DECEL_THRESHOLD 1.0
+#define DEFAULT_BUMP_THRESHOLD 0.10
+#define DEFAULT_DECEL_LIMIT 4000
+#define DEFAULT_SCALE_TOLERANCE 0.021
+#define DEFAULT_TRICKLER_SPEED 3000         //pulses per sec (1/8 micro step)
 
 /*
  * Type def for ConfigData.  
@@ -29,7 +38,7 @@ typedef struct _config_data_t {
   float bump_threshold;
   int decel_limit;
   float gn_tolerance;
-  float mg_tolerance;
+  int trickler_speed;
   int config_version; 
 } ConfigData;
 #define CONFIG_DATA_SIZE sizeof(_config_data_t)
@@ -46,8 +55,7 @@ typedef union _config_data_storage_t {
 /*
  * Class PTConfig
  */
-class PTConfig
-{
+class PTConfig {
   public:
     // Constructor
     PTConfig();
@@ -66,8 +74,8 @@ class PTConfig
     void setFcurveP(float);
     float getGnTolerance();
     void setGnTolerance(float);
-    //float getMgTolerance();
-    //void setMgTolerance(float);
+    int getTricklerSpeed();
+    void setTricklerSpeed(int);
     int getPreset();
     void setPreset(int);
     bool isDirty();
@@ -92,18 +100,27 @@ class PTConfig
     boolean validateData();
     void printConfig();
     bool updateBLE(BLECharacteristic);
+    bool isRunReady();
     
   private:
     // Vars
     ConfigDataStorage _config_buffer;  // FRAM storage read/write buffer
-    ConfigDataStorage _defaults = {0, -1.5, 1.0, 0.10, 4000, 0.021, 0.002, CONFIG_VERSION};
-    Adafruit_FRAM_I2C _fram;
+    ConfigDataStorage _defaults = {
+      DEFAULT_PRESET, 
+      DEFAULT_FCURVEP, 
+      DEFULT_DECEL_THRESHOLD, 
+      DEFAULT_BUMP_THRESHOLD, 
+      DEFAULT_DECEL_LIMIT, 
+      DEFAULT_SCALE_TOLERANCE, 
+      DEFAULT_TRICKLER_SPEED, 
+      CONFIG_VERSION
+    };
+    Adafruit_FRAM_I2C _fram;        // local ref to global Adafruit_FRAM_I2C object
     bool _dirty;                    // config data changed, needs saving
     bool _updateBLE;                // config data changed, update BLE
     bool _version_reset;            // flag, if config version was reset on init
 
-    //Internal data from current preset/powder
-    int _preset;                    // current preset index
+    //Runtime data from current preset/powder
     char _preset_name[NAME_LEN+1];  // from current preset
     float _target_weight;           // from current preset
     char _powder_name[NAME_LEN+1];  // from current preset -> powder

@@ -98,13 +98,11 @@ BLECharacteristic powderListItemChar(BLE_POWDER_LIST_ITEM_CHAR_GUID, BLERead | B
 BLEDescriptor powderListItemDescriptor("2901", "Powder List Item");
 
 
-/*
- * Setup Bluetooth Low Energy (BLE) 
- */
+/*** Setup Bluetooth Low Energy (BLE). ***/
 bool initBLE() {
-  // begin initialization
   if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy failed!");
+    Serial.println("Starting Bluetooth® Low Energy failed!");
+    logError("Starting Bluetooth® Low Energy failed!", __FILE__, __LINE__, true);
     while (1);
   }
   Serial.println("BLE started");
@@ -148,26 +146,16 @@ bool initBLE() {
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
   // assign event handlers for characteristics
-  decelThreshChar.setEventHandler(BLEWritten, decelThreshCharWritten);
+  decelThreshChar.setEventHandler(BLEWritten, decelThreshSliderCharWritten);
   parameterCommandChar.setEventHandler(BLEWritten, parameterCommandCharWritten);
   presetDataChar.setEventHandler(BLEWritten, presetDataCharWritten);
 
-  // set the initial value for the characteristics:
-  // TODO: trigger the update function instead?
-  // TODO: what really needs to happen here?
-  //Serial.println("Update data on BLE connection");
-  //updateBLEData(true);
-
-  // start advertising
   BLE.advertise();
   Serial.println("Bluetooth® device active, waiting for connections..");
 }
 
-/*
- * Handle a connection from BLE central
- */
+/* Handle a connection from BLE central */
 void blePeripheralConnectHandler(BLEDevice central) {
-  // central connected event handler
   Serial.print("Connected event, central: ");
   Serial.println(central.address());
   g_mcp.digitalWrite(MCP_LED_PUR_PIN, HIGH);
@@ -175,9 +163,7 @@ void blePeripheralConnectHandler(BLEDevice central) {
   updateBLEData(true);
 }
 
-/*
- * Handle a disconnect from the BLE central
- */
+/* Handle a disconnect from the BLE central */
 void blePeripheralDisconnectHandler(BLEDevice central) {
   // central disconnected event handler
   Serial.print("Disconnected event, central: ");
@@ -189,24 +175,24 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
  * Handler for decel threshold update from device slider
  * TODO: Write FRAM every update?  Use user action with button on phone?
  */
-void decelThreshCharWritten(BLEDevice central, BLECharacteristic characteristic) {
-  char* buff = new char[4];
-  for (int i=0; i<3; i++) {
-    buff[i]=toascii(characteristic.value()[i]);
-  }
-  buff[3] = '\0';
-  float val = atof(buff);
-  g_config.setDecelThreshold(val);
-  g_config.saveConfig();
+void decelThreshSliderCharWritten(BLEDevice central, BLECharacteristic characteristic) {  
+  static float floatval;
+  characteristic.readValue( &floatval, 4 );
+  g_config.setDecelThreshold(floatval);
+  g_config.saveConfig();  
   if (g_state.getState() == g_state.pt_cfg) {
     g_display_changed = true;
     displayUpdate();
   }
 }
 
-/*
- * Handler for preset data update from central
- */
+union ByteArrayToValue {
+  byte array[4];
+  int32_t int_value;
+  float_t float_value;
+};
+
+/*** Handler for preset data update (on save) from central. ***/
 void presetDataCharWritten(BLEDevice central, BLECharacteristic characteristic) {
   Serial.println("TODO: parse data and update preset at specified preset index.");
   Serial.print("valueSize: ");
@@ -215,13 +201,71 @@ void presetDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   Serial.println(characteristic.valueLength());
   Serial.print("Data recieved: ");  
   printByteData(characteristic.value(), characteristic.valueSize());
+  Serial.println();
 
-}
+  //parse the data
 
-/*
- * Handler for parameter command
- * See BLE Parameter command codes definitions above
- */
+  static ByteArrayToValue converter;
+  static char buff[NAME_LEN+1];
+
+  memcpy(converter.array, &characteristic.value()[0], 4);
+  int preset_index = converter.int_value;
+  Serial.print("Preset Index: ");
+  Serial.println(preset_index);
+  
+  memcpy(converter.array, &characteristic.value()[4], 4);
+  float charge_weight = converter.float_value;
+  Serial.print("Charge Weight: ");
+  Serial.println(charge_weight);
+  g_presets.setPresetChargeWeight(charge_weight);
+  
+  memcpy(converter.array, &characteristic.value()[8], 4);
+  int powder_index = converter.int_value;
+  Serial.print("Powder Index: ");
+  Serial.println(powder_index);
+  g_presets.setPowderIndex(powder_index);
+  
+  memcpy(buff, &characteristic.value()[12], NAME_LEN);
+  buff[NAME_LEN] = 0x00;
+  Serial.print("Preset Name: ");
+  Serial.println(buff);
+  g_presets.setPresetName(buff);
+
+  memcpy(buff, &characteristic.value()[29], NAME_LEN);
+  buff[NAME_LEN] = 0x00;
+  Serial.print("Bullet Name: ");
+  Serial.println(buff);
+  g_presets.setBulletName(buff);
+
+  memcpy(converter.array, &characteristic.value()[46], 4);
+  int bullet_weight = converter.int_value;
+  Serial.print("Bullet Weight: ");
+  Serial.println(bullet_weight);
+  g_presets.setBulletWeight(bullet_weight);
+
+  memcpy(buff, &characteristic.value()[50], NAME_LEN);
+  buff[NAME_LEN] = 0x00;
+  Serial.print("Brass Name: ");
+  Serial.println(buff);
+  g_presets.setBrassName(buff);
+
+  memcpy(converter.array, &characteristic.value()[72], 4);
+  int preset_version = converter.int_value;
+  Serial.print("Preset Version: ");
+  Serial.println(preset_version);
+  
+  // Save the data
+  Serial.print("Overwriting current preset at index: ");
+  Serial.println(g_presets.getCurrentPreset());
+
+  g_presets.savePreset();
+
+  // Update display
+  g_display_changed = true;
+  displayUpdate(true);
+  }
+
+/* Handler for parameter command.  See BLE Parameter command codes definitions above. */
 void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteristic) {
   static ListItemBuffer list_buffer; // buffer for writing a list item
   static PresetDataStorage preset;  // buffer for preset data structure retrieval
@@ -237,30 +281,14 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
       Serial.print(parameter);
       Serial.print(" Index: ");
       Serial.println(index);
-      //TODO: replace this silliness with getting appropriate data structs from managers
-      //  and storing as unions in (scale or config?).  Probably refactor into scale.
-      g_presets.loadPreset(index);
-      g_config.setPreset(index);
-      g_presets.getPresetName(name_buff);
-      g_config.setPresetName(name_buff);
-      g_powders.loadPowder(g_presets.getPowderIndex());
-      g_powders.getPowderName(name_buff);
-      g_config.setPowderName(name_buff);
-      g_scale.setTarget(g_presets.getPresetChargeWeight());
-      g_config.setTargetWeight(g_presets.getPresetChargeWeight());  // TODO: REALLY NEED TO FIX THIS DUPLICATION!
+      setConfigPresetData();
+      displayUpdate(true); //TODO: this or 
+      //g_display_changed = true;
 
-      if (!g_config.saveConfig()) { 
-        Serial.println("ERROR: could not save config.");
-      } else {
-        Serial.print("Current preset index ");
-        Serial.print(g_presets.getCurrentPreset());
-        Serial.print(" changed to ");
-        Serial.println(index);
-      }
-      displayUpdate(true);
+      //TODO: update BLE runtime?
 
-      //TODO:
-      
+      //TODO: am I using this command?
+
       break;
 
     case BLE_COMMAND_SET_CURRENT_POWDER:
@@ -274,8 +302,22 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
       break;
 
     case BLE_COMMAND_REQ_PRESET_BY_INDEX:      
-      if ((index > 0) || (index < MAX_PRESETS)) {
+      if ((index >= 0) || (index < MAX_PRESETS)) {
+        Serial.print("Current Preset index was: ");
+        Serial.println(g_presets.getCurrentPreset());
+        Serial.print("Preset data requested at index: ");
+        Serial.println(index);
         BLEWritePresetDataAt(index);
+        g_presets.loadPreset(index);
+        if (g_presets.isDefined()) {
+          setConfigPresetData();
+        }
+        Serial.print("Current Preset index now: ");
+        Serial.println(g_presets.getCurrentPreset());
+        if (g_state.getState() == g_state.pt_presets) {
+          g_display_changed = true;
+          displayUpdate(true);
+        }
       } else {
         Serial.print("ERROR: preset index out of range at ");
         Serial.println(__LINE__);
@@ -331,9 +373,20 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
 
     case BLE_COMMAND_SET_SYSTEM_STATE:
       if (g_state.isValidState(parameter)) {
-          g_state.setState((PTState::state_t)parameter);
-          g_display_changed = true;
-          displayUpdate();
+        switch ((PTState::state_t)parameter) {
+          case g_state.pt_ready:
+            //This should be checked on app side but just to be sure, check again
+            //TODO: is there any way to respond to this BLE command in app? 
+            if (g_config.isRunReady()) { 
+              g_state.setState(g_state.pt_ready); 
+            }
+            break;
+          default:
+            g_state.setState((PTState::state_t)parameter);
+            break;
+        }
+        g_display_changed = true;
+        displayUpdate();
       } else {
           Serial.print("ERROR: parameter is an unknown state. Line: ");
           Serial.print(__LINE__);
@@ -353,6 +406,9 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
  * Dynamically update runtime BLE data.
  * Updates any advertized runtime ("pushed" data) if data has changed  
  * since last update interval.
+ * 
+ * TODO: make most of this on demand.  Only RT scale data (weight, mode) needs
+ * to be sent immediately.
  */
 void updateBLEData(bool force) {
   static long _last_update = 0;
@@ -394,6 +450,14 @@ void updateBLEData(bool force) {
       scale_mode_changed = false;
     }
     //only update things if changed or forced
+    if ((scale_cond != _last_scale_cond) || force) {
+      if (!scaleCondChar.writeValue(scale_cond)) { Serial.println("BLE Failed to write scale condition."); }
+      _last_scale_cond = scale_cond;
+    }
+    if ((system_state != _last_system_state) || force) {
+      if (!systemStateChar.writeValue(system_state)) { Serial.println("BLE Failed to write system state."); }
+      _last_system_state = system_state;
+    }    
     if ((scale_weight != _last_scale_weight) || scale_mode_changed || force) {
       if (g_scale.getMode() == SCALE_MODE_GRAM) {
         value_buff[0] = 0;
@@ -404,7 +468,10 @@ void updateBLEData(bool force) {
       if (!scaleWeightChar.writeValue(value_buff, 5)) { Serial.println("BLE Failed to write scale weight."); }
       _last_scale_weight = scale_weight;
     }
-    if ((target_weight != _last_target_weight) || scale_mode_changed || force) {
+
+    //TODO: The rest of this should be on demand
+
+    if ((target_weight != _last_target_weight) || scale_mode_changed || force) { //TODO: get target from config!
       if (g_scale.getMode() == SCALE_MODE_GRAM) {
         value_buff[0] = 0;
       } else {
@@ -414,33 +481,22 @@ void updateBLEData(bool force) {
       if (!scaleTargetChar.writeValue(value_buff, 5)) { Serial.println("BLE Failed to write target weight."); }
       _last_target_weight = target_weight;
     }
-    if ((scale_cond != _last_scale_cond) || force) {
-      //memcpy(value_buff[0], &scale_cond, 4);
-      if (!scaleCondChar.writeValue(scale_cond)) { Serial.println("BLE Failed to write scale condition."); }
-      _last_scale_cond = scale_cond;
-    }
-    if ((system_state != _last_system_state) || force) {
-      //memcpy(value_buff[0], &system_state, 4);
-      if (!systemStateChar.writeValue(system_state)) { Serial.println("BLE Failed to write system state."); }
-      _last_system_state = system_state;
-    }
-    if ((decel_thresh != _last_decel_thresh) || force) {
-      //memcpy(value_buff[0], &decel_thresh, 4);
+
+    if ((decel_thresh != _last_decel_thresh) || force) { //TODO: make on demand as part of config data manager in ap
       if (!decelThreshChar.writeValue(decel_thresh)) { Serial.println("BLE Failed to write decel thresh."); }
       _last_decel_thresh = decel_thresh;
-    }    
-    if (g_config.isBLEUpdateNeeded()) {
+    }
+
+    if (g_config.isBLEUpdateNeeded()) { //TODO: make on demand, use config data manager in app
       Serial.print("TODO: make configDataChar \"update on demand\" in PTBLE.ino ");
       Serial.println(__LINE__);
       if (!g_config.updateBLE(configDataChar)) {Serial.println("BLE Failed to write config data.");}
-    }
-    if ((g_config.getPreset() != _last_preset_number) || force)
-    {
-      //if (!g_presets.BLEWriteCurrentPreset(presetDataChar)) {Serial.println("BLE Failed to write preset data.");}
-      BLEWritePresetDataAt(g_config.getPreset());
-      //if (!g_powders.BLEWriteCurrentPowder(powderDataChar)) {Serial.println("BLE Failed to write powder data.");}
-      BLEWritePowderDataAt(g_powders.getCurrentPowder()); //TODO: <- is this right?
-      _last_preset_number = g_config.getPreset();
+    }    
+
+    if (force) {
+      Serial.print("Forced write powder data at index ");
+      Serial.println(g_presets.getPowderIndex());
+      BLEWritePowderDataAt(g_presets.getPowderIndex());
     }
   }
 }

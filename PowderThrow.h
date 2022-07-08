@@ -86,6 +86,7 @@
 
 //MISC
 #define NAME_LEN 16
+#define EMPTY_NAME "EMPTY"
 
 /*
  * System wide globals
@@ -108,7 +109,6 @@ PTLed g_LED_Red;
 PTLed g_LED_Pur;
 
 float g_curve_map[101];         // Curve for trickler slowdown
-int g_trickler_cal_speed = MAX_TRICKLER_SPEED * TRICKLER_DIRECTION;  //init at max until calibrated
 int g_thrower_top_pos = -1;     // not calibrated by default
 int g_thrower_bottom_pos = -1;  // not calibrated by default
 

@@ -5,10 +5,10 @@
  * 
  */
 #include "Arduino.h"
-#include "PTConfig.h"
 #include <Adafruit_FRAM_I2C.h>
 #include "PTUtility.h"
 #include <ArduinoBLE.h>
+#include "PTConfig.h"
 
 #ifndef PTPRESETS_H
 #define PTPRESETS_H 
@@ -17,6 +17,8 @@
 //0 base, 50 presets
 #define MAX_PRESETS 49 
 #define PRESETS_ADDR_BASE CONFIG_DATA_SIZE + 8
+
+#define NAME_LEN 16
 
 /*
  * Type def for PresetData.  
@@ -71,7 +73,7 @@ class PresetManager
     bool setBrassName(char*);
     
     // Actions
-    bool init(Adafruit_FRAM_I2C, PTConfig);
+    bool init(Adafruit_FRAM_I2C, int);
     void incPresetChargeWeight(int);
     void decPresetChargeWeight(int);
     void incPresetNameChar(int);
@@ -95,7 +97,6 @@ class PresetManager
   private:
 
     // Vars
-    PTConfig _config;
     Adafruit_FRAM_I2C _fram;
     PresetDataStorage _preset_buffer;  // storage read/write buffer
     PresetDataStorage _defaults = { 0.0, -1, "EMPTY           ", "                ", 0, "                ", PRESETS_VERSION};

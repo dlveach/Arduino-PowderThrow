@@ -21,13 +21,11 @@ PresetManager::PresetManager()
  * Returns true if successful, false if not.
  * Will set a system error.
  */
-bool PresetManager::init(Adafruit_FRAM_I2C fram, PTConfig cfg)
+bool PresetManager::init(Adafruit_FRAM_I2C fram, int preset_index)
 {
   _fram = fram;
-  _config = cfg;
-  int i = _config.getPreset();
-  if (i < 0) { i = 0; }
-  return (loadPreset(i));
+  if ((preset_index < 0) || (preset_index > MAX_PRESETS)) { preset_index = 0; }
+  return (loadPreset(preset_index));
 }
 
 bool PresetManager::isDefined()

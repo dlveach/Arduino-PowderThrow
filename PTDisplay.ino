@@ -78,22 +78,22 @@ void displayUpdate(bool force)
       g_lcd.print(buff);
       if (_clear_disp) {
         g_lcd.setCursor(0,1);
-        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  //TODO: switch to using scale?
+        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  
         g_lcd.print(buff);
       }
       
       g_lcd.setCursor(0,2);
       if ((g_scale.getCondition() == PTScale::pan_off) || (g_scale.getCondition() == PTScale::undef) || (g_scale.getDelta() >= 10)) {
         if (g_scale.getMode() == SCALE_MODE_GRAM) {
-          sprintf(buff, "T:% 05.3f G  D: -.---", g_scale.getTarget());
+          sprintf(buff, "T:% 05.3f G  D: -.---", g_config.getTargetWeight());
         } else {
-          sprintf(buff, "T:% 05.2f gn D: --.--", g_scale.getTarget());
+          sprintf(buff, "T:% 05.2f gn D: --.--", g_config.getTargetWeight());
         } 
       } else {
         if (g_scale.getMode() == SCALE_MODE_GRAM) {
-          sprintf(buff, "T:% 05.3f G  D:% 5.3f", g_scale.getTarget(), g_scale.getDelta());
+          sprintf(buff, "T:% 05.3f G  D:% 5.3f", g_config.getTargetWeight(), g_scale.getDelta());
         } else {
-          sprintf(buff, "T:% 05.2f gn D:% 5.2f", g_scale.getTarget(), g_scale.getDelta());
+          sprintf(buff, "T:% 05.2f gn D:% 5.2f", g_config.getTargetWeight(), g_scale.getDelta());
         }
       }
       pad(buff);

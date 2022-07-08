@@ -1,32 +1,28 @@
 /*
- * PTScale.h
+ *  PTScale.h
  * 
- * A&D FXi Scale Communication and support
+ *  A&D FXi Scale Communication and support
+ *
+ *  TODO: document
  *
  */
 #include "Arduino.h"
-#include "PTState.h"
 #include "PTConfig.h"
-//TODO: include presets and powders, contain current data for each, add setters/getters, use in running state & display
 
 #ifndef PTSCALE_H
 #define PTSCALE_H 
 
 #define SCALE_MODE_GRAM 0
 #define SCALE_MODE_GRAIN 1
-#define SERIAL_TIMEOUT 100          //Millis before serial comm timeout
-#define MIN_CALIBRATION_WEIGHT -20  //in grains.  A "dead zone" in case scale drifts a tiny bit off zero.
-#define SCALE_MAX_CON_FAILS 20      // Max serial communication fails before setting connected = false.
+#define SERIAL_TIMEOUT 100              // Millis before serial comm timeout
+#define MIN_CALIBRATION_WEIGHT -20      // Value in grains.  A "dead zone" in case scale drifts a tiny bit off zero.
+#define SCALE_MAX_CON_FAILS 20          // Max serial communication fails before setting connected = false.
 #define GM_TO_GN_FACTOR 0.06479891      // grams per grain conversion factor
 
-//static float GM_TO_GN_FACTOR = 0.06479891; // grams per grain conversion factor
 static const char* ConditionNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Cls","On Tgt","Over Tgt","Undef"};
 static const char* ConditionLongNames[] = {"Not Ready","Zero","Pan Off","Under","Close","Very Close","On Target","Over Target","Undefined"};
 static const char* ModeNames[] = {"Milligram","Grain"};
 
-/*
- * Class PTScale
- */
 class PTScale
 {
   public:
@@ -48,8 +44,6 @@ class PTScale
     // Vars
 
     // Getters/Setters
-    void setTarget(float);
-    float getTarget();
     float getDelta();
     float getWeight();
     float getKernels();
@@ -67,17 +61,15 @@ class PTScale
     bool isCalibrated();
     
     // Actors
-    boolean init(PTState, PTConfig);
+    boolean init(PTConfig);
     void checkScale();
     void zeroScale();
 
   private:
   
     // Vars
-    PTState _ptstate;         // The PTState object.
     PTConfig _ptconfig;       // The PTConfig object.
 
-    float _target;            // The weight target.
     bool _calibrated;         // Has the setup calibration been done successfully
     bool _connected;          // State of Serial connection to scale
     int _con_fail_count;      // Number of consecutive connection failures

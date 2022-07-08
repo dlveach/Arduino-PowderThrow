@@ -1,5 +1,5 @@
 /*
- * Globals used only here
+ * Globals used only here in this file.
  * TODO: consider a class?  Probably not.  Getting too big.
  */
 bool interrupted = false;
@@ -16,22 +16,15 @@ int last_button = 0;
  * the first one found (searched in order of A0 -> B7).
  * 
  */
-void checkButtons() 
-{
-  if (interrupted) 
-  {
-    if ((millis() - interrupt_time) > DEBOUNCE) 
-    {
+void checkButtons() {
+  if (interrupted) {
+    if ((millis() - interrupt_time) > DEBOUNCE) {
       interrupted = false;
       g_mcp.getLastInterruptPin();  //clear it just in case      
     }
-  }
-  else
-  {
-    if (!digitalRead(INT_PIN)) 
-    {
-      if (!interrupted) 
-      {
+  } else {
+    if (!digitalRead(INT_PIN)) {
+      if (!interrupted) {
         interrupted = true;
         interrupt_time = millis();
         int btn = g_mcp.getLastInterruptPin();
@@ -47,26 +40,18 @@ void checkButtons()
  * Pause system until user presses any button.
  * Uses debounce delay.
  */
-void pauseForAnyButton()
-{
+void pauseForAnyButton() {
   bool waiting = true;
-  while (waiting)
-  {
-    if (interrupted) 
-    {
-      if ((millis() - interrupt_time) > DEBOUNCE) 
-      {
+  while (waiting) {
+    if (interrupted)  {
+      if ((millis() - interrupt_time) > DEBOUNCE)  {
         interrupted = false;
         g_mcp.getLastInterruptPin();  //clear it just in case
         waiting = false;
       }
-    }
-    else
-    {
-      if (!digitalRead(INT_PIN)) 
-      {
-        if (!interrupted) 
-        {
+    } else {
+      if (!digitalRead(INT_PIN)) {
+        if (!interrupted) {
           interrupted = true;
           interrupt_time = millis();
         }
@@ -101,7 +86,8 @@ void handleButton(int btn)
               switch (g_cur_line)
               {
                 case 0:
-                  setSystemReady();
+                  if (g_config.isRunReady()) { g_state.setState(g_state.pt_ready); }
+                  g_display_changed = true;
                   break;
                 case 1:
                   g_state.setState(g_state.pt_cfg);
@@ -325,8 +311,7 @@ void handleButton(int btn)
         case BTN_OK:
           if (g_presets.getPresetChargeWeight() > 0)
           {
-            g_config.setPreset(g_presets.getCurrentPreset());
-            g_config.saveConfig();
+            setConfigPresetData();
             g_cur_line = g_prev_line;
             g_state.setState(g_state.pt_menu);
           } else { return; }
