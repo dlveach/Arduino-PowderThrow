@@ -7,17 +7,16 @@
 #include "Arduino.h"
 #include <Adafruit_FRAM_I2C.h>
 #include "PTUtility.h"
-#include <ArduinoBLE.h>
+#include "ArduinoBLE.h"
 #include "PTConfig.h"
 
 #ifndef PTPRESETS_H
 #define PTPRESETS_H 
 
-#define PRESETS_VERSION 10002
+#define PRESETS_VERSION 10003
 //0 base, 50 presets
-#define MAX_PRESETS 49 
+#define MAX_PRESETS 24
 #define PRESETS_ADDR_BASE CONFIG_DATA_SIZE + 8
-
 #define NAME_LEN 16
 
 /*
@@ -25,13 +24,14 @@
  * Data structure for a preset in the list.
  */
 typedef struct _preset_data_t {
+  int preset_version;             //version of this structure
+  int preset_number;              //preset number (1 based)
   float charge_weight;            //powder grains (-1 if preset "empty")
   int powder_index;               //index into powder list
+  int bullet_weight;              //bullet grains
   char preset_name[NAME_LEN+1];   //name of preset (load)
   char bullet_name[NAME_LEN+1];   //name of bullet
-  int bullet_weight;              //bullet grains
   char brass_name[NAME_LEN+1];    //name of brass
-  int preset_version;             //version of this structure
 } PresetData;
 #define PRESET_DATA_SIZE sizeof(_preset_data_t)
 
@@ -99,7 +99,7 @@ class PresetManager
     // Vars
     Adafruit_FRAM_I2C _fram;
     PresetDataStorage _preset_buffer;  // storage read/write buffer
-    PresetDataStorage _defaults = { 0.0, -1, "EMPTY           ", "                ", 0, "                ", PRESETS_VERSION};
+    PresetDataStorage _defaults = { PRESETS_VERSION, 0, 0.0, -1, 0, "EMPTY           ", "--              ", "--              "};
     boolean _dirty;
     int _cur_preset;
     char _error_buff[100];  //TODO: is this used?

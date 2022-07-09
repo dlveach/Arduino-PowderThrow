@@ -7,25 +7,18 @@
 #include "PTConfig.h"
 #include "PTUtility.h"
 
-/*
- * Constructor
- */
 PTConfig::PTConfig() {
   _config_buffer = _defaults;
   _dirty = false;
-  // initialize indirect (copied) data
   _preset_name[0] = 0x00; // from current preset
   _target_weight = -1;    // from current preset
   _powder_name[0] = 0x00; // from current preset -> powder
   _kernel_factor = -1;    // from current preset -> powder
 }
 
-/*
- * Initialize the config object.  
+/* Initialize the config object.  
  * Connects to FRAM, loads current config from storage.
- * Returns true if successful, false if not.
- * Will set a system error.
- */
+ * Returns true if successful, false if not. */
 bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd) {
   _fram = fram;
   _version_reset = false;
@@ -38,6 +31,7 @@ bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd) {
     lcd.setCursor(0,2);
     lcd.print(F("FRAM resetting ...  "));
     util_eraseFRAM(fram);
+    saveConfig(true);  //initialize new config to defaults (TODO: not working, why?)
   }
   _updateBLE = true;
   return (true);
@@ -129,10 +123,22 @@ void PTConfig::setKernelFactor(float value) { _kernel_factor = value; }
 void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
 float PTConfig::getTargetWeight() { return (_target_weight); }
-
 /*
- * Reset system config to current config buffer.
- */
+bool PTConfig::getDefaults(byte buffer[]) {
+  int size = sizeof(buffer);
+  Serial.print("Buffer size: ");
+  Serial.println(size);
+  Serial.print("DEFAULTS size: ");
+  Serial.println(CONFIG_DATA_SIZE);
+  if (size < CONFIG_DATA_SIZE) {
+    Serial.println("ERROR: PTConfig::getDefaults(): buffer size too small.");
+    return (false);
+  }
+  memcpy(buffer, _defaults.raw_data, CONFIG_DATA_SIZE);
+  return (true);  
+}
+*/
+/* Reset system config to current config buffer.  */
 boolean PTConfig::resetConfig() {
   if (!_readConfigData())  {
     DEBUGLN(F("resetConfig(): ERROR: could not read FRAM storage."));
@@ -143,11 +149,9 @@ boolean PTConfig::resetConfig() {
   return (true);
 }
 
-/*
- * Load config buffer from FRAM and set system config.
- */
+/* Load config buffer from FRAM and set system config. */
 boolean PTConfig::loadConfig() {
-  //DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
+  DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
   if (!_readConfigData())  {
     DEBUGLN(F("loadConfig(): ERROR: could not read FRAM storage."));
     return (false);
@@ -162,17 +166,15 @@ boolean PTConfig::loadConfig() {
   return (true);
 }
 
-/*
- * Copy current system config to config buffer and save to storage.
- * Returns true if successful, false if not.
- */
+/* Copy current system config to config buffer and save to storage.
+ * Returns true if successful, false if not. */
 boolean PTConfig::saveConfig(boolean init) {
  if (init) {
-    //DEBUGLN(F("saveSettings(): Initializing config to defaults."));
+    DEBUGLN(F("saveSettings(): Initializing config to defaults."));
     _config_buffer = _defaults;
   }
   if (!_dirty) { return (true); } //no changes to save
-  //DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
+  DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
   if (_writeConfigData()) {
     _dirty = false;
     return (true);
@@ -193,9 +195,7 @@ boolean PTConfig::saveConfig(boolean init) {
  * PRIVATE
  ******************/
  
-/*
- * Writes the config buffer to FRAM.
- */
+/* Writes the config buffer to FRAM. */
 boolean PTConfig::_writeConfigData () {
   uint16_t addr = CONFIG_DATA_ADDR;
   if ((addr + CONFIG_DATA_SIZE-1) > FRAM_SIZE) return (false); //overflow
@@ -203,10 +203,8 @@ boolean PTConfig::_writeConfigData () {
   return (true); 
 }
 
-/*
- * Reads the FRAM into the config buffer.
- * Returns true if successful, false if not.
- */
+/* Reads the FRAM into the config buffer.
+ * Returns true if successful, false if not. */
 boolean PTConfig::_readConfigData () {
   uint16_t addr = CONFIG_DATA_ADDR;
   if ((addr + CONFIG_DATA_SIZE-1) > FRAM_SIZE) {
@@ -221,10 +219,7 @@ boolean PTConfig::_readConfigData () {
  * DEBUG / TEST
  *********************/
 
-/*
- * Debug helper printConfig().  
- * Dump current config buffer to Serial.
- */
+/* Debug helper printConfig().  Dump current config buffer to Serial. */
 void PTConfig::printConfig() {
   char buff[80];
   int bsize = sizeof(buff);

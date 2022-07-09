@@ -58,8 +58,7 @@ int PowderManager::getPowderVersion()
  * ERROR and return false if length of powder name too long.
  * TODO: change to just return pointer to char array.
  */
-bool PowderManager::getPowderName(char* buff)
-{
+bool PowderManager::getPowderName(char* buff){
   //TODO: does this need a safety check?. 
   strcpy(buff, _powder_buffer._powder_data.powder_name);
   return (true);
@@ -69,10 +68,8 @@ bool PowderManager::getPowderName(char* buff)
  * Copy NAME_LEN chars from buff to loaded buffer's name.
  * ERROR and return false if length of buff too long.
  */
-bool PowderManager::setPowderName(char* buff)
-{
-  if (strlen(buff) > NAME_LEN)
-  {
+bool PowderManager::setPowderName(char* buff) {
+  if (strlen(buff) > NAME_LEN) {
     DEBUGP(F("ERROR: string too long. "));
     DEBUGLN(__LINE__);
     util_handleSystemError("ERR: str too long");
@@ -82,6 +79,24 @@ bool PowderManager::setPowderName(char* buff)
   _dirty = true;
   return (true);  
 }
+
+  bool PowderManager::getPowderLot(char* buff) {
+    //TODO: does this need a safety check?. 
+    strcpy(buff, _powder_buffer._powder_data.powder_lot);
+    return (true);
+  }
+  
+  bool PowderManager::setPowderLot(char* buff) {
+    if (strlen(buff) > NAME_LEN) {
+      DEBUGP(F("ERROR: string too long. "));
+      DEBUGLN(__LINE__);
+      util_handleSystemError("ERR: str too long");
+      return (false);
+    }
+    strcpy(_powder_buffer._powder_data.powder_lot, buff);
+    _dirty = true;
+    return (true);  
+  }
 
 /*
  * Return Powder Factor value for current powder.
@@ -286,6 +301,7 @@ boolean PowderManager::savePowder(boolean init) {
   if (init) {
     DEBUGLN(F("savePowder(): Initializing powder to defaults."));
     _powder_buffer = _defaults;
+    _powder_buffer._powder_data.powder_number = _cur_powder + 1;
     _dirty = true;
   }
   if (!_dirty) { return (true); }  //nothing to save

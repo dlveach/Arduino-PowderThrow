@@ -127,5 +127,6 @@ int g_disp_page = 1;
 void setTricklerSpeed(bool force=false);
 void updateBLEData(bool force=false);
 void displayUpdate(bool force=false);
+void stopAll(bool setThrowerHome=false);
 
 #endif  // POWDER_THROW_DEFINITIONS_H

@@ -359,13 +359,11 @@ boolean PresetManager::resetCurrentPreset() {
  */
 boolean PresetManager::savePreset(boolean init) {
   if (init) {
-    //DEBUGLN(F("savePreset(): Initializing preset to defaults."));
     _preset_buffer = _defaults;
+    _preset_buffer._preset_data.preset_number = _cur_preset + 1;
     _dirty = true;
   }
   if (!_dirty) { return (true); }  //nothing to save
-  //sprintf(_error_buff, "savePreset(): Saving preset %02d to FRAM storage.");
-  //DEBUGLN(_error_buff);
   if (_writePresetData(_cur_preset)) {
     _dirty = false;
     return (true);
@@ -378,16 +376,13 @@ boolean PresetManager::savePreset(boolean init) {
  * the supplied preset list index.
  *
  * Params,
- * index: 0 base list index
+ * index: 0 base index
  *
  * Returns true if successful, false if not.
  */
-boolean PresetManager::_writePresetData(int index)
-{
-//  uint16_t addr = PRESETS_ADDR_BASE + _cur_preset * PRESET_DATA_SIZE;
+boolean PresetManager::_writePresetData(int index) {
   uint16_t addr = PRESETS_ADDR_BASE + index * PRESET_DATA_SIZE;
-  if ((addr + PRESET_DATA_SIZE-1) > FRAM_SIZE)
-  {
+  if ((addr + PRESET_DATA_SIZE-1) > FRAM_SIZE)  {
     DEBUGLN(F("FATAL: _writePresetData(): FRAM storage address overflow."));
     return (false);
   }

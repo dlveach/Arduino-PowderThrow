@@ -15,7 +15,7 @@
 #define NAME_LEN 16 //avoiding cirlular dep. Dup defs in PTPresets.h and PTPowders.h  TODO: move to top level .h?
 
 #define FRAM_SIZE 32768  //max 32K Fram address
-#define CONFIG_VERSION 10004  // unique version ID
+#define CONFIG_VERSION 10007  // unique version ID
 #define CONFIG_DATA_ADDR 0x0  //base memory location of config data
 
 //Config Defaults
@@ -101,6 +101,7 @@ class PTConfig {
     void printConfig();
     bool updateBLE(BLECharacteristic);
     bool isRunReady();
+    //bool getDefaults(byte buffer[]);
     
   private:
     // Vars

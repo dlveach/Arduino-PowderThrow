@@ -25,22 +25,25 @@ char decChar(char c) {
   return c;
 }
 
-void printBytes(byte addr[], int byte_count) {
-  char buff[100];
-  Serial.print("printBytes() byte_count: ");
-  Serial.println(byte_count);
-  Serial.print("Address: ");
-  Serial.println((unsigned int)&addr[0], HEX);
-  Serial.print("Bytes: ");
-  for (int i=0; i<byte_count-1; i++) {
-    sprintf(buff, "[%d],", addr[i]);
+void printByteData(const unsigned char data[], int len) {
+  //TODO: wrap in #ifdef DEBUG_SERIAL
+  static char buff[5];
+  Serial.print("[");
+  for (int i = 0; i < len - 1; i++) {
+    sprintf(buff, "%d", byte(data[i]));
     Serial.print(buff);
+    if (((i+1) % 10) == 0) { //0 based index, break every 10
+      Serial.print(" | ");
+    } else {
+      Serial.print(", ");
+    }
   }
-  sprintf(buff, "[%d]", addr[byte_count-1]);
-  Serial.println(buff);  
+  sprintf(buff, "%d]", byte(data[len - 1]));
+  Serial.print(buff);
 }
 
 /*** Overwrite entire FRAM with 0x00 to erase all storage. ***/
+//TODO: change this to write defaults into config, presets, and powders
 void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   DEBUGP(F("Zeroing out FRAM "));
   uint16_t addr = CONFIG_DATA_ADDR;
@@ -48,8 +51,12 @@ void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   while ((addr + idx) < FRAM_SIZE) {
     _fram.write8(addr + idx++, 0x00);
     if ((idx % 1000) == 0) {
+      #ifdef DEBUG_SERIAL
       DEBUGP(".");
-      delay(250);  // slow it down a touch
+      delay(250);  // slow it down a touch more when debugging.
+      #else
+      delay(10);
+      #endif
     }
   }
   DEBUGLN(".");

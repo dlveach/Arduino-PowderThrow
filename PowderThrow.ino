@@ -13,6 +13,7 @@
  *   FRAM board: 0x50
  *   
  *   TODO: 
+ *   - Do a save on config after FRAM reset (or it will reset again)
  *   - LOTS of stuff for bluetooth (in work)
  *   - Clean up debug stuff
  *   - Evaluate headers, possible circular deps, possible refactoring.
@@ -26,6 +27,7 @@
  *   
  *   BUGFIX:
  *   - a crash during running state leaves TIC running, impliment TIC library "reset command timout"
+ *   - hang after failed calibrate trickler
  *   
  ***********************************************************************/
 
@@ -469,16 +471,14 @@ void bumpTrickler() {
  * Stop the system.
  * Set trickler and thrower speed to 0.
  */
-void stopAll() {
+void stopAll(bool setThrowerHome) {
   g_TIC_trickler.setTargetVelocity(0);
   g_TIC_thrower.setTargetVelocity(0);
-  //TODO:  if thrower not at home pos, move it there?
-/*  
-  if (g_TIC_thrower.getCurrentPosition() != g_thrower_top_pos)
-  {
-    g_TIC_thrower.setTargetPosition(g_thrower_top_pos);    
-  }
-*/  
+  if (setThrowerHome) { 
+    if (g_TIC_thrower.getCurrentPosition() != g_thrower_top_pos) {
+      g_TIC_thrower.setTargetPosition(g_thrower_top_pos);    
+    }
+  }  
 }
 
 /*
@@ -730,8 +730,11 @@ void calibrateTrickler(bool runMe) {
     g_lcd.print("Trickler unchanged. ");
     g_lcd.setCursor(0,3);
     g_lcd.print("Press any button... ");
+    delay(5);
+    Serial.println("Waiting for button press");
     pauseForAnyButton();
-    pauseForAnyButton();
+    Serial.println("After button press");
+//    pauseForAnyButton();
     }
   g_state.setState(g_state.pt_man);
   g_display_changed = true;
