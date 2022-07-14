@@ -79,6 +79,7 @@ void runSystem() {
   //If not in a running state, do nothing
   int s = g_state.getState();
   if (!((s == PTState::pt_ready) ||
+      (s == PTState::pt_disabled) ||
       (s == PTState::pt_throwing) ||
       (s == PTState::pt_trickling) ||
       (s == PTState::pt_bumping) ||
@@ -136,6 +137,17 @@ void runSystem() {
     return;
   }  
 
+  if (g_state.getState() == PTState::pt_disabled) {
+      g_LED_Blu.setFlash(250);
+      g_LED_Yel_1.setOff();
+      g_LED_Yel_2.setOff();
+      g_LED_Grn.setOff();
+      g_LED_Red.setOn();
+      g_display_changed = true; 
+      displayUpdate();
+    return;
+  }
+
   // Now check to see if scale pan is off in a "running" state.
   if (scale_cond == PTScale::pan_off) {
     switch (g_state.getState()) {
@@ -160,6 +172,8 @@ void runSystem() {
       if ((scale_cond == PTScale::zero) && (g_scale.isStable())) {
         DEBUGLN(F("State == Ready and pan on scale & stable, Start Throwing."));
         g_state.setState(PTState::pt_throwing);
+        Serial.print("config tolerance: ");
+        Serial.println(g_config.getGnTolerance());
       }
       g_LED_Blu.setFlash(1000);
       g_LED_Yel_1.setOff();
@@ -383,17 +397,13 @@ void runSystem() {
       }
       break;
     default:
-      // not in a running state, just ignore
-      break;
+      break;  // not in a running state, just ignore
   }
   g_display_changed = true; 
   displayUpdate();
 }
 
-/*
- * Update LEDs
- * Intended to be called often, from loop()
- */
+/* Update LEDs.  Intended to be called often, from loop() */
 void updateLEDs() {
   g_LED_Blu.update();
   g_LED_Yel_1.update();
@@ -402,9 +412,7 @@ void updateLEDs() {
   g_LED_Red.update();
 }
 
-/*
- * Run the trickler
- */
+/*  Run the trickler  */
 void startTrickler() {
   DEBUGLN(F("Starting the trickler."));
   if (g_TIC_trickler.getCurrentVelocity() != 0) {
@@ -441,8 +449,7 @@ void setTricklerSpeed(bool force) {
   if (index >= 99) index = 99;
   float value = g_curve_map[index];
   value = value / 100.0;
-  //speed is always negative so make limit negative
-  int limit = g_config.getDecelLimit() * TRICKLER_DIRECTION; 
+   int limit = g_config.getDecelLimit() * TRICKLER_DIRECTION; 
   //Adjust speed never slowing beyond limit
   int new_speed = ((g_config.getTricklerSpeed()-limit)*value)+limit; 
 
@@ -453,9 +460,7 @@ void setTricklerSpeed(bool force) {
   g_TIC_trickler.setTargetVelocity(new_speed * TIC_PULSE_MULTIPLIER);  
 }
 
-/*
- * Bump the trickler if BUMP_INTERVAL time period elapsed.
- */
+/*  Bump the trickler if BUMP_INTERVAL time period elapsed.  */
 void bumpTrickler() {
   static long _last_bump = 0;
   if (_last_bump == 0) { _last_bump = millis(); } //init first time
@@ -467,10 +472,7 @@ void bumpTrickler() {
 }
 
 
-/*
- * Stop the system.
- * Set trickler and thrower speed to 0.
- */
+/*  Stop the stepper drivers. */
 void stopAll(bool setThrowerHome) {
   g_TIC_trickler.setTargetVelocity(0);
   g_TIC_thrower.setTargetVelocity(0);
@@ -479,13 +481,22 @@ void stopAll(bool setThrowerHome) {
       g_TIC_thrower.setTargetPosition(g_thrower_top_pos);    
     }
   }  
+  int s = g_state.getState();
+  if ((s == PTState::pt_ready) ||
+      (s == PTState::pt_throwing) ||
+      (s == PTState::pt_trickling) ||
+      (s == PTState::pt_bumping) ||
+      (s == PTState::pt_paused) ||
+      (s == PTState::pt_locked))
+  {
+    //Was in a runnign state, set. to locked.  Won't be cleared until pan off scale.
+    g_state.setState(g_state.pt_locked);
+  } else {
+    g_state.setState(g_state.pt_menu); //TODO: can e-stop be triggered in non-running states? test this
+  }
 }
 
-/*
- * Check if thrower has been calibrated.   
- * 
- * TODO: get rid of this fn if this is all it does?
- */
+/*  Check if thrower has been calibrated. */ 
  bool isSystemCalibrated() {
   bool cal = true;
   if (cal) { cal = !(g_TIC_thrower.getPositionUncertain()); }  // thrower calibrated
@@ -493,9 +504,7 @@ void stopAll(bool setThrowerHome) {
   return (cal);
  }
 
-/*
- * Run a single manual throw
- */
+/*  Run a single manual throw. */
 void manualThrow() {
   static bool _lock = false;  
 
@@ -545,9 +554,7 @@ void manualThrow() {
   _lock = false;
 }
 
-/*
- * Manual trickle toggle run/stop
- */
+/*  Manual trickle toggle run/stop  */
 void toggleTrickler() {
   static bool _running = false;
   if (_running) {
@@ -562,9 +569,7 @@ void toggleTrickler() {
   }
 }
 
-/*
- * Calibrate scale.  Sets zero and pan on/pan off detection.
- */
+/*  Calibrate scale.  Sets zero and pan on/pan off detection. */
 void menuCalibrateScale() {
   g_state.setState(g_state.pt_man_cal_scale);
   g_mcp.getLastInterruptPin(); //clear any button interrupts
@@ -591,21 +596,55 @@ void menuCalibrateScale() {
   g_state.setState(g_state.pt_menu);
 }
 
+/* Local menu command start trickler calibration */
+void startTricklerCalibration() {
+  g_state.setState(g_state.pt_man_cal_trickler);  
+  if (g_scale.getCondition() == g_scale.pan_off) {
+    g_lcd.setCursor(0,1);
+    g_lcd.print("Pan off scale       ");
+    g_lcd.setCursor(0,2);
+    g_lcd.print("Cannot calibrate    ");
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+    g_state.setState(g_state.pt_menu); 
+    g_display_changed = true;
+  } else if (g_scale.getMode() != SCALE_MODE_GRAIN) {
+    g_lcd.setCursor(0,1);
+    g_lcd.print("Scale not in Grains ");
+    g_lcd.setCursor(0,2);
+    g_lcd.print("Cannot calibrate    ");
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+    g_state.setState(g_state.pt_menu); 
+    g_display_changed = true;
+  } else {
+    calibrateTrickler();
+    g_lcd.setCursor(0,3);
+    g_lcd.print("Press any button... ");
+    pauseForAnyButton();
+  }
+  g_state.setState(g_state.pt_menu); //return to system menu if started locally
+  g_display_changed = true;  
+}
+
 /*
  * Calibrate trickler flow rate
- * runMe is true when called to start (manual menu)
- * runMe is false when button pressed during calibration (A recursive call) and  
- *  triggers exit (setting static var _running to false, exiting calibration loop.
+ * A static flag (_running) is toggled if called during calibration (recursive if button pressed) and  
+ *  triggers exit (setting static var _running to false, exiting calibration loop.  Also happens if
+ *  central sends cancel command via BLE.
  * Will time out and auto exit after a number of samples or if successfully achieving
  *  a stable calibration before then.
- * Updates global calibration speed if successful.
+ * Updates global calibration speed in configuration if successful.
  */
  #define SUCCESS_COUNT 10
-void calibrateTrickler(bool runMe) {
+void calibrateTrickler() {
   static bool _running = false;
   float flow_rate = 0.0;
   int test_speed = g_config.getTricklerSpeed();
   unsigned long last_check = 0;
+  unsigned long last_poll = 0;
   float last_weight = 0;
   int count = 0; 
   float tot = 0.0;
@@ -617,29 +656,20 @@ void calibrateTrickler(bool runMe) {
   float* samples = new float[5];
   int good_count = 0;
   bool success = false;
-  if (!runMe) {
-    // button pressed during calibration
+  static uint8_t* ble_data = new uint8_t[12];
+
+  // if called recursively while running (either as button pressed or from BLE central)
+  // during calibration then set the static flag to cancel it and just return. 
+  if (_running) {
     _running = false;
     return; 
   }
-  _running = true;
-  g_state.setState(g_state.pt_man_cal_trickler);
+  _running = true;  //start it
+
+  //setup local LCD during calibration
   g_lcd.clear();
   g_lcd.setCursor(0,0);
   g_lcd.print("Calibrate Trickler:");
-  if (g_scale.getMode() == SCALE_MODE_GRAM) {
-    g_lcd.setCursor(0,1);
-    g_lcd.print("Scale not in Grains ");
-    g_lcd.setCursor(0,2);
-    g_lcd.print("Cannot calibrate    ");
-    g_lcd.setCursor(0,3);
-    g_lcd.print("Press any button... ");
-    pauseForAnyButton();
-    pauseForAnyButton();
-    g_state.setState(g_state.pt_man); 
-    g_display_changed = true;
-    return;
-  }
   g_lcd.setCursor(0,1);
   g_lcd.print("Sample:");
   g_lcd.setCursor(0,2);
@@ -647,8 +677,18 @@ void calibrateTrickler(bool runMe) {
   g_lcd.print(buff);
   g_lcd.setCursor(0,3);
   g_lcd.print("Avg gn/s:");
+
+  // Start the test
+  Serial.print("Start trickler at: ");
+  Serial.println(millis());
   g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);
-  delay(2000);   
+  last_check = millis();
+  while (((millis() - last_check) < 2000) && _running) {
+    checkButtons();
+    BLE.poll();
+  }
+  Serial.print("Starting calibration loop at: ");
+  Serial.println(millis());
   while (_running) {
     if ((millis() - last_check) > 2000) {
       last_check = millis();
@@ -663,6 +703,13 @@ void calibrateTrickler(bool runMe) {
       sprintf(buff, "%04d", test_speed);
       g_lcd.print(buff);
       g_scale.checkScale();  // what if scale comm fails or not in good state?
+      if (g_scale.getMode() != SCALE_MODE_GRAIN) {
+        // User switched scale during calibrate, bail out and fail!!!
+        Serial.println("ERROR: scale not in grains during calibrate!");
+        _running = false;
+        success = false;
+        break;
+      } 
       weight = g_scale.getWeight();  
       diff = weight - last_weight;
       last_weight = weight;
@@ -692,10 +739,18 @@ void calibrateTrickler(bool runMe) {
           } else if (avg < 0.9) {
             good_count = 0;            
             test_speed = test_speed + 50;
+            if (test_speed > MAX_TRICKLER_SPEED) { test_speed = MAX_TRICKLER_SPEED; }
             g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);            
           } else {
             good_count++;
           }
+        }
+        memcpy(&ble_data[0], &count, 4);
+        if (count < 5) { avg = -1.0; } // signal no average yet
+        memcpy(&ble_data[4], &avg, 4);
+        memcpy(&ble_data[8], &test_speed, 4);
+        if (BLE.connected()) {
+          BLEWriteTricklerCalData(ble_data, 12);
         }
       }
       if (good_count == SUCCESS_COUNT) {
@@ -704,40 +759,46 @@ void calibrateTrickler(bool runMe) {
         break;
       }
     }
-    // Call checkButtons() here to update running state if button pressed
     checkButtons();
-    //  TODO: update BLE info when there's a calibrate display in the phone app
+    BLE.poll();
   }
+
+  // Calibration is over
   g_TIC_trickler.setTargetVelocity(0);
   g_lcd.clear();
   g_lcd.setCursor(0,0);
   g_lcd.print("Calibrate Trickler:");
   if (success) {
+    Serial.println("Calibration success");
+    if (BLE.connected()) {
+      count = -99;  //stop signal to BLE central
+      memcpy(&ble_data[0], &count, 4);
+      memcpy(&ble_data[4], &avg, 4);
+      memcpy(&ble_data[8], &test_speed, 4);
+      BLEWriteTricklerCalData(ble_data, 12);
+    }
+    g_config.setTricklerSpeed(test_speed);
+    g_config.saveConfig();
     g_lcd.setCursor(0,1);
     g_lcd.print("Calibration success!");
     g_lcd.setCursor(0,2);
     sprintf(buff, "New speed: %04d", test_speed);
     g_lcd.print(buff);
-    g_lcd.setCursor(0,3);
-    g_lcd.print("Press any button... ");
-    pauseForAnyButton();
-    g_config.setTricklerSpeed(test_speed);
-    g_config.saveConfig();
   } else {
+    Serial.println("Calibration failed");
+    if (BLE.connected()) {
+      count = -99; //stop signal to BLE central
+      memcpy(&ble_data[0], &count, 4);
+      avg = -1.0; //indicate failure
+      memcpy(&ble_data[4], &avg, 4);
+      memcpy(&ble_data[8], &test_speed, 4);
+      BLEWriteTricklerCalData(ble_data, 12);
+    }
     g_lcd.setCursor(0,1);
     g_lcd.print("Calibration failed! ");
     g_lcd.setCursor(0,2);
     g_lcd.print("Trickler unchanged. ");
-    g_lcd.setCursor(0,3);
-    g_lcd.print("Press any button... ");
-    delay(5);
-    Serial.println("Waiting for button press");
-    pauseForAnyButton();
-    Serial.println("After button press");
-//    pauseForAnyButton();
-    }
-  g_state.setState(g_state.pt_man);
-  g_display_changed = true;
+  }
 }
 
 // Set runtime config data for selected preset/powder  

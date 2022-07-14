@@ -9,12 +9,13 @@
 #ifndef PTState_h
 #define PTState_h
 
+// TODO: change config -> Settings
 static const char* StateNames[] = {"Undefined","Error","Setup","Ready","Throwing",
-  "Trickling","Bumping","Paused","Locked","Menu","Config","Manual","Man Throw",
+  "Trickling","Bumping","Paused","Locked","Menu","Config","Disabled","Man Throw",
   "Man Trickle","Cal Trickler", "Cal Scale","Powders","Edit Powder","Presets","Edit Preset",};
     
 static const char* StateLongNames[] = {"Undefined","Error","Setup","Ready","Throwing",
-  "Trickling","Bumping","Paused","Locked","Menu","Config","Manual","Manual Throw",
+  "Trickling","Bumping","Paused","Locked","Menu","Config","Disabled","Manual Throw",
   "Manual Trickle","Calibrate Trickler", "Calibrate Scale","Powders","Edit Powder","Presets","Edit Preset",};
     
 class PTState
@@ -33,7 +34,7 @@ class PTState
       pt_locked,
       pt_menu,
       pt_cfg,
-      pt_man,
+      pt_disabled,
       pt_man_throw,
       pt_man_trickle,
       pt_man_cal_trickler,

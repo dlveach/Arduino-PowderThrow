@@ -41,6 +41,7 @@ class PTScale
     // Constructor
     PTScale();
 
+
     // Vars
 
     // Getters/Setters
@@ -61,14 +62,14 @@ class PTScale
     bool isCalibrated();
     
     // Actors
-    boolean init(PTConfig);
+    boolean init(PTConfig*);
     void checkScale();
     void zeroScale();
 
   private:
   
     // Vars
-    PTConfig _ptconfig;       // The PTConfig object.
+    PTConfig *_config;       // Pointer to the global PTConfig object.
 
     bool _calibrated;         // Has the setup calibration been done successfully
     bool _connected;          // State of Serial connection to scale

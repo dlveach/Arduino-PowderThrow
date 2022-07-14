@@ -56,10 +56,10 @@
 #define TRICKLER_DIRECTION 1            //positive (1) for forward, negative (-1) for reverse
 #define THROWER_TRAVEL_DISTANCE -1350   //1600 pulses = 1 turn
 #define MAX_THROWER_SPEED 4000          //pulses per sec (1/8 micro step, 150rpm) 
-#define MAX_TRICKLER_SPEED 3000         //pulses per sec (1/8 micro step)
+#define MAX_TRICKLER_SPEED 5000         //pulses per sec (1/8 micro step)
 #define THROWER_DWELL_TIME 1200         //time to dwell at end of throw & let powder drop/fill
 #define SYSTEM_LOCK_TIME 5000           //time to stay locked
-#define SYSTEM_PAUSE_TIME 1000          //time to pause & let scale settle when on target 
+#define SYSTEM_PAUSE_TIME 2000          //time to pause & let scale settle when on target 
 #define BUMP_INTERVAL 800               //bump interval  
 #define BUMP_DISTANCE 75                //steps to bump  
 

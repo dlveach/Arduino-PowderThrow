@@ -9,7 +9,7 @@
 #include "PTUtility.h"
 
 bool _debug = false;
-bool print_diag = false;  //debug diagnostics
+bool print_diag = true;  //debug diagnostics
 
 
 PTScale::PTScale()  {
@@ -29,8 +29,8 @@ PTScale::PTScale()  {
  * Returns true if successful, false if not.
  * Will set a system error.
  */
-bool PTScale::init(PTConfig cfg) {
-  _ptconfig = cfg;
+bool PTScale::init(PTConfig* config) {
+  _config = config;
   Serial1.begin(19200, SERIAL_8N1);
   while (!Serial1);
   delay(10);
@@ -176,7 +176,7 @@ void PTScale::checkScale()
     
     //Process scale respnse. Calculate values & state from serial data
     _stable = (serial_data[0] == 'S');
-    _target = _ptconfig.getTargetWeight();
+    _target = _config->getTargetWeight();
     if (serial_data[14] == 'g') {
       if (_mode != SCALE_MODE_GRAM) { 
         //changed from gn -> mg
@@ -206,20 +206,24 @@ void PTScale::checkScale()
     
     //calculate scale data values and set states
     _delta = _target - _weight;
-    _kernels = _delta / _ptconfig.getKernelFactor();
-    _tol = _ptconfig.getGnTolerance();    
-    _decel_thresh = _ptconfig.getDecelThreshold();
-    _bump_thresh = _ptconfig.getBumpThreshold();
+    _kernels = _delta / _config->getKernelFactor();
+    _tol = _config->getGnTolerance();    
+    _decel_thresh = _config->getDecelThreshold();
+    _bump_thresh = _config->getBumpThreshold();
 
     //adjust for grams if necessary
     if (_mode == SCALE_MODE_GRAM) {
-      _kernels = (_delta / GM_TO_GN_FACTOR) / _ptconfig.getKernelFactor(); //kernel factor is in grains
+      _kernels = (_delta / GM_TO_GN_FACTOR) / _config->getKernelFactor(); //kernel factor is in grains
       _tol = _tol * GM_TO_GN_FACTOR;
       _decel_thresh = _decel_thresh * GM_TO_GN_FACTOR;
       _bump_thresh = _bump_thresh * GM_TO_GN_FACTOR;              
     } 
        
     // now evaluate condition of scale based on weight and configuration
+    //Serial.print("abs(delta), tol: ");
+    //Serial.print(abs(_delta));
+    //Serial.print(", ");
+    //Serial.println(_tol);
     if (!isCalibrated()) {
       _cond = PTScale::undef;
     } else if (_weight < (_off_scale_weight / 2)) {
@@ -244,6 +248,10 @@ void PTScale::checkScale()
         DEBUGP("Max Micros spent in checkScale() this period: ");
         DEBUGLN(micros() - _t);
         _max_time = 0;    
+        //Serial.print("Config target: ");
+        //Serial.println(_config->getTargetWeight());
+        //Serial.print("Scale target: ");
+        //Serial.println(_target);
       }
     }
     _serial_lock = false;
@@ -261,9 +269,9 @@ void PTScale::printConfig() {
   DEBUGLN(_connected);
   DEBUGP(F("Scale Target: "));
   DEBUGLN(g_config.getTargetWeight());
-  sprintf(buff, "Scale grain tolerance: %8.6f", _ptconfig.getGnTolerance()); 
+  sprintf(buff, "Scale grain tolerance: %8.6f", _config->getGnTolerance()); 
   DEBUGLN(buff);
-  sprintf(buff, "Scale milligram tolerance: %8.6f", _ptconfig.getGnTolerance() * GM_TO_GN_FACTOR); 
+  sprintf(buff, "Scale milligram tolerance: %8.6f", _config->getGnTolerance() * GM_TO_GN_FACTOR); 
   DEBUGLN(buff);
   DEBUGP(F("Scale Condition: "));
   DEBUGLN(getConditionName());

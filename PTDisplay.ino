@@ -61,6 +61,7 @@ void displayUpdate(bool force)
     ////////////////////////////
     // SYSTEM RUNNING
     ////////////////////////////
+    case g_state.pt_disabled:
     case g_state.pt_ready:
     case g_state.pt_throwing:
     case g_state.pt_trickling:
@@ -147,22 +148,6 @@ void displayUpdate(bool force)
       }
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));      _clear_disp = true;
-      break;
-    ////////////////////////////
-    // MANUAL
-    ////////////////////////////
-    case g_state.pt_man:
-      g_lcd.clear();
-      g_lcd.print(F("  Throw a charge    "));
-      g_lcd.setCursor(0,1);
-      g_lcd.print(F("  Trickler on/off   "));
-      g_lcd.setCursor(0,2);
-      g_lcd.print(F("  Calibrate Trickler"));
-      g_lcd.setCursor(0,3);
-      g_lcd.print(F("  Calibrate Scale   "));
-      g_lcd.setCursor(0,g_cur_line);
-      g_lcd.print(F(">>"));
-      _clear_disp = true;
       break;
     ////////////////////////////
     // CONFIG

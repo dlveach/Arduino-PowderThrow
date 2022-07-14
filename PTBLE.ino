@@ -11,7 +11,7 @@
 2ab6726c-ec1a-11ec-8ea0-0242ac120002 - Preset List item
 970a7c20-e01b-11ec-9d64-0242ac120002 - Powder data structure
 970a71b2-e01b-11ec-9d64-0242ac120002 - Powder List Item
-71ae0138-eda2-11ec-8ea0-0242ac120002
+71ae0138-eda2-11ec-8ea0-0242ac120002 - Trickler calibration data
 71ae0282-eda2-11ec-8ea0-0242ac120002
 71ae03ea-eda2-11ec-8ea0-0242ac120002
 71ae058e-eda2-11ec-8ea0-0242ac120002
@@ -40,10 +40,12 @@
 #define BLE_COMMAND_SET_CURRENT_POWDER 0x30
 #define BLE_COMMAND_REQ_POWDER_BY_INDEX 0x31
 #define BLE_COMMAND_REQ_POWDER_NAME_AT_INDEX 0x32
-#define BLE_COMMAND_CALIBRATE_TRICKLER 0x41
-#define BLE_COMMAND_CALIBRATE_SCALE 0x42
+#define BLE_COMMAND_CALIBRATE_TRICKLER_START 0x41
+#define BLE_COMMAND_CALIBRATE_TRICKLER_CANCEL 0x42
+#define BLE_COMMAND_CALIBRATE_SCALE 0x43
 #define BLE_COMMAND_SYSTEM_SET_STATE 0x50
 #define BLE_COMMAND_SYSTEM_ESTOP 0x51
+#define BLE_COMMAND_SYSTEM_ENABLE 0x52
 //TODO: define ladder command(s)
 #define BLE_COMMAND_MANUAL_THROW 0x61
 #define BLE_COMMAND_MANUAL_TRICKLE 0x62
@@ -61,6 +63,7 @@
 #define BLE_PRESET_LIST_ITEM_GUID "2ab6726c-ec1a-11ec-8ea0-0242ac120002"
 #define BLE_POWDER_DATA_GUID "970a7c20-e01b-11ec-9d64-0242ac120002"
 #define BLE_POWDER_LIST_ITEM_CHAR_GUID "970a71b2-e01b-11ec-9d64-0242ac120002"
+#define BLE_TRICKLER_CAL_DATA_CHAR_GUID "71ae0138-eda2-11ec-8ea0-0242ac120002"
 
 // BLE misc definitions
 #define PARAMETER_COMMAND_SIZE 2
@@ -78,7 +81,9 @@ typedef union _list_item_buffer_t {
 } ListItemBuffer;
 
 BLEService ptBLE_Service(BLE_SERVICE_GUID);
-BLECharacteristic parameterCommandChar(BLE_PARAMETER_COMMAND_GUID, BLERead | BLEWrite | BLENotify, PARAMETER_COMMAND_SIZE, true);
+//TODO: for some reason trickler calibration needs parameter command "without response", it's never getting one and connection drops.
+//BLECharacteristic parameterCommandChar(BLE_PARAMETER_COMMAND_GUID, BLERead | BLEWrite | BLENotify, PARAMETER_COMMAND_SIZE, true);
+BLECharacteristic parameterCommandChar(BLE_PARAMETER_COMMAND_GUID, BLERead | BLEWrite | BLEWriteWithoutResponse | BLENotify, PARAMETER_COMMAND_SIZE, true);
 BLEDescriptor parameterCommandDescriptor("2901", "Parameter Command");
 BLECharacteristic scaleWeightChar(BLE_SCALE_WEIGHT_GUID, BLERead | BLENotify, 5, true);
 BLEDescriptor scaleWeightDescriptor("2901", "Scale weight");
@@ -100,15 +105,15 @@ BLECharacteristic powderDataChar(BLE_POWDER_DATA_GUID, BLERead | BLEWrite | BLEN
 BLEDescriptor powderDataDescriptor("2901", "Powder Data");
 BLECharacteristic powderListItemChar(BLE_POWDER_LIST_ITEM_CHAR_GUID, BLERead | BLENotify, LIST_ITEM_SIZE);
 BLEDescriptor powderListItemDescriptor("2901", "Powder List Item");
-
+BLECharacteristic tricklerCalDataChar(BLE_TRICKLER_CAL_DATA_CHAR_GUID, BLERead | BLENotify, 12, true);
+BLEDescriptor tricklerCalDataDescriptor("2901", "Trickler Calibration Data");
 
 /*** Setup Bluetooth Low Energy (BLE). ***/
 bool initBLE() {
   if (!BLE.begin()) {
     Serial.println("Starting Bluetooth® Low Energy failed!");
     logError("Starting Bluetooth® Low Energy failed!", __FILE__, __LINE__, true);
-    while (1)
-      ;
+    while (1);
   }
   Serial.println("BLE started");
 
@@ -129,6 +134,7 @@ bool initBLE() {
   presetListItemChar.addDescriptor(presetListItemDescriptor);
   powderDataChar.addDescriptor(powderDataDescriptor);
   powderListItemChar.addDescriptor(powderListItemDescriptor);
+  tricklerCalDataChar.addDescriptor(tricklerCalDataDescriptor);
 
   // add the characteristic to the service
   ptBLE_Service.addCharacteristic(parameterCommandChar);
@@ -142,6 +148,7 @@ bool initBLE() {
   ptBLE_Service.addCharacteristic(presetListItemChar);
   ptBLE_Service.addCharacteristic(powderDataChar);
   ptBLE_Service.addCharacteristic(powderListItemChar);
+  ptBLE_Service.addCharacteristic(tricklerCalDataChar);
 
   // add service
   BLE.addService(ptBLE_Service);
@@ -304,6 +311,7 @@ void presetDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   Serial.println(g_presets.getCurrentPreset());
 
   g_presets.savePreset();
+  setConfigPresetData();
 
   // Update display
   g_display_changed = true;
@@ -366,7 +374,8 @@ void powderDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   Serial.println(g_powders.getCurrentPowder());
 
   g_powders.savePowder();
-
+  setConfigPresetData();
+  
   // Update display
   g_display_changed = true;
   displayUpdate(true);
@@ -379,6 +388,8 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
   static PowderDataStorage powder;      // buffer for preset data structure retrieval
   static char name_buff[NAME_LEN + 1];  // buffer for preset/powder names
   static int parameter;                 // the command parameter
+
+  //BLE.poll();  //allow BLE to provide write response?  Didn't help.
 
   //byte cmd = byte(characteristic.value()[0]);
   parameter = int(characteristic.value()[1]);
@@ -395,9 +406,33 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
       Serial.println("TODO: impliment");
       break;
 
-    case BLE_COMMAND_CALIBRATE_TRICKLER:
-      Serial.println("BLE Command: Calibratre Trickler");
-      Serial.println("TODO: impliment");
+    case BLE_COMMAND_CALIBRATE_TRICKLER_START:
+      Serial.println("BLE Command: Calibratre Trickler Start");
+      Serial.print("Parameter: ");
+      Serial.println(parameter);
+      if (g_scale.getCondition() == g_scale.pan_off) { 
+        Serial.println("Pan is off scale, ignoring BLE command.");
+        return; 
+      } else if (g_scale.getMode() != SCALE_MODE_GRAIN) {
+        Serial.println("Scale is not in Grain mode, ignoring BLE command.");
+        return; 
+      }
+      g_state.setState(g_state.pt_man_cal_trickler);
+      calibrateTrickler();
+      g_state.setState(g_state.pt_cfg); //return to config settings if started from BLE
+      g_display_changed = true;
+      displayUpdate(true);
+      break;
+
+    case BLE_COMMAND_CALIBRATE_TRICKLER_CANCEL:
+      Serial.println("BLE Command: Calibratre Trickler Stop");
+      Serial.print("Parameter: ");
+      Serial.println(parameter);
+      if (g_state.getState() == g_state.pt_man_cal_trickler) {
+        calibrateTrickler(); // called again while calibrating will toggle it off
+      } else {
+        Serial.println("Trickler calibration not running, ignoring BLE command.");
+      }
       break;
 
     case BLE_COMMAND_CALIBRATE_SCALE:
@@ -408,6 +443,27 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
     case BLE_COMMAND_SYSTEM_ESTOP:
       Serial.println("BLE Command: System EStop");
       stopAll(true);
+      break;
+
+    case BLE_COMMAND_SYSTEM_ENABLE:
+      Serial.println("BLE Command: System Enable");
+      // Ignore if not in correct state
+      if ((g_state.getState() == PTState::pt_ready) || (g_state.getState() == PTState::pt_disabled)) {
+        switch(parameter) {
+          case 0:
+            g_state.setState(PTState::pt_ready);
+            break;
+          case 1:
+            g_state.setState(PTState::pt_disabled);
+            break;
+          default:
+            Serial.println("ERROR: Command System Enable: Unknown parameter.");
+            return;
+            break;
+        }
+        g_display_changed = true;
+        displayUpdate(false);
+      }
       break;
 
     case BLE_COMMAND_SET_CURRENT_PRESET:
@@ -638,13 +694,20 @@ void updateBLEData(bool force) {
       Serial.println(__LINE__);
       if (!g_config.updateBLE(configDataChar)) { Serial.println("BLE Failed to write config data."); }
     }
-/*
+
     if (force) {
-      Serial.print("Forced write powder data at index ");
-      Serial.println(g_presets.getPowderIndex());
-      BLEWritePowderDataAt(g_presets.getPowderIndex());
+      Serial.print("Forced write preset data at index: ");
+      Serial.println(g_config.getPreset());
+      if (g_presets.loadPreset(g_config.getPreset())) {
+        BLEWritePresetDataAt(g_config.getPreset());
+        Serial.print("Forced write powder data at index: ");
+        Serial.println(g_presets.getPowderIndex());
+        BLEWritePowderDataAt(g_presets.getPowderIndex());
+      } else {
+        Serial.println("Failed to load preset.");
+      }
     }
-*/    
+
   }
 }
 
@@ -693,6 +756,13 @@ void BLEWritePowderDataAt(int index) {
     if (!powderDataChar.writeValue(powder.raw_data, sizeof(powder.raw_data))) { Serial.println("BLE Failed to write powder data."); }
   }
 }
+
+void BLEWriteTricklerCalData(uint8_t* _data, int len) {
+  printByteData(_data, len);
+  Serial.println();
+  if (!tricklerCalDataChar.writeValue(_data, len)) { Serial.println("BLE Failed to write trickler cal data."); }
+}
+
 
 void printHexData(const unsigned char data[], int len) {
   for (int i = 0; i < len; i++) {

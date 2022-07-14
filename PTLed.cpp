@@ -6,11 +6,7 @@
 #include "Arduino.h"
 #include "PTLed.h"
 
-/*
- * Constructor
- */
-PTLed::PTLed() 
-{
+PTLed::PTLed() {
   _initialized = false;
 }
 
@@ -18,8 +14,7 @@ PTLed::PTLed()
  * Initialize the PTled object with MCP device and pin number. 
  * NOTE: Intended to be called during setup(), before main loop.
  */
-void PTLed::init(Adafruit_MCP23X17 mcp, int pin) 
-{
+void PTLed::init(Adafruit_MCP23X17 mcp, int pin) {
   _mcp = mcp;
   _pin = pin;
   _mcp.pinMode(_pin, OUTPUT);
@@ -34,13 +29,9 @@ void PTLed::init(Adafruit_MCP23X17 mcp, int pin)
   _initialized = true;  
 }
   
-/*
- * 
- */
-void PTLed::setOn()
-{
-  if (_initialized)
-  {
+/* Set LED On. */
+void PTLed::setOn() {
+  if (_initialized) {
     if (_flashing) { _flashing = false; }
     if (_state == LOW) {
       _state = HIGH;
@@ -49,13 +40,9 @@ void PTLed::setOn()
   }
 }
 
-/*
- * 
- */
-void PTLed::setOff()
-{
-  if (_initialized)
-  {
+/* Sed LED off. */
+void PTLed::setOff() {
+  if (_initialized) {
     if (_flashing) { _flashing = false; }
     if (_state == HIGH) {
       _state = LOW;
@@ -64,68 +51,44 @@ void PTLed::setOff()
   }
 }
 
-/*
- * 
- */
-void PTLed::setFlash(int rate)
-{
-  if (_initialized)
-  {
-    if (!_flashing) 
-    {
+/* Set LED flashing at rate (in millis).  Rate == 0 will setOff().  */
+void PTLed::setFlash(int rate) {
+  if (_initialized)  {
+    if (rate > 0) {
       _flash_rate = rate;
-      _flashing = true;
-      _needs_update = true;
-    }
+      if (!_flashing) { _flashing = true; }
+    } else { setOff(); }
+    _needs_update = true;
   }
 }
 
-/*
- *  
- */
-void PTLed::toggle()
-{
-  if (_initialized)
-  {
-    if (!_flashing) 
-    {
+/* Toggle LED state (On/Off) */
+void PTLed::toggle() {
+  if (_initialized) {
+    if (!_flashing) {
       _state = !_state;
       _needs_update = true;
     }
   }  
 }
 
-/*
- *  
- */
-int PTLed::getState()
-{
-  if (_initialized)
-  {
-    return _state;
-  }  
-}
+int PTLed::getState() { if (_initialized) { return _state; } }
 
 /*
  * Update the MCP pin state if update needed.
  * Expects to be called regularly, like main loop or run loop.
  * Doesn't do anything if not initialized or no update needed.
  */
-void PTLed::update()
-{
-  if (_initialized)
-  {
-    if (_flashing)
-    {
-      if ((millis() - _last_flash) > _flash_rate)
-      {
+void PTLed::update() {
+  if (_initialized) {
+    if (_flashing) {
+      if ((millis() - _last_flash) > _flash_rate) {
         _last_flash = millis();
         _state = !_state;
         _needs_update = true;
       }
     }  
-    if (_needs_update) 
-    { 
+    if (_needs_update) { 
       _mcp.digitalWrite(_pin, _state);
       _needs_update = false; 
     }

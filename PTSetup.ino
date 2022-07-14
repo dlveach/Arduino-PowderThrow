@@ -178,7 +178,7 @@ void setup() {
   updateLEDs();
   // Setup scale   
   while (!g_scale.isConnected()) {
-    if (g_scale.init(g_config)) {
+    if (g_scale.init(&g_config)) {
       DEBUGLN(F("Scale serial connection established."));
       g_lcd.setCursor(0,2);
       g_lcd.print(F("Scale connected.    "));

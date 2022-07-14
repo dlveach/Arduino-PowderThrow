@@ -42,6 +42,7 @@ void checkButtons() {
  */
 void pauseForAnyButton() {
   bool waiting = true;
+  g_mcp.getLastInterruptPin(); // clear any prior button press/bounces
   while (waiting) {
     if (interrupted)  {
       if ((millis() - interrupt_time) > DEBOUNCE)  {
@@ -118,7 +119,7 @@ void handleButton(int btn)
                   toggleTrickler();
                   break;
                 case 2:
-                  calibrateTrickler(true);  // true == start it
+                  startTricklerCalibration();
                   break;
                 case 3:
                   menuCalibrateScale();   
@@ -162,7 +163,7 @@ void handleButton(int btn)
         case BTN_UP:
         case BTN_DOWN:
         case BTN_OK:
-          calibrateTrickler(false);  // any button will cancel and stop it
+          calibrateTrickler();  // any button will cancel and stop it when running
       break;
       }      
     ////////////////////////////
@@ -620,24 +621,47 @@ void handleButton(int btn)
       break;
     ////////////////////////////
     // SYSTEM READY
+    // SYSTEM DISABLED
     ////////////////////////////
     case g_state.pt_ready:
-      DEBUGLN(F("TODO: handleButton(): pt_run"));
+    case g_state.pt_disabled:
       switch (btn)
       {
         case BTN_LEFT:
+          Serial.println("toggle ready/disabled state.");
+          if (g_state.getState() == PTState::pt_ready) {
+            g_state.setState(PTState::pt_disabled);
+          } else if (g_state.getState() == PTState::pt_disabled) {
+            g_state.setState(PTState::pt_ready);
+          } else {
+            return;  // ignore all other states
+          }
+          g_display_changed = true;
+          displayUpdate(false);
+          break;
         case BTN_RIGHT:
-        case BTN_UP:  //increment target weight?
-        case BTN_DOWN:  //decrement target weight?
-          return; // Do nothing
+          Serial.println("TODO: next ladder rung?");
+          return;
+        case BTN_UP:  
+          Serial.println("TODO: increment target weight?  Or ladder?");
+          return;
+        case BTN_DOWN:  
+          Serial.println("TODO: decrement target weight?  Or ladder?");
+          return;
         case BTN_OK:
-          //TODO: only go to menu if state: pt_ready or pt_locked
-          g_state.setState(g_state.pt_menu);
-          g_LED_Blu.setOff();
-          g_LED_Yel_1.setOff();
-          g_LED_Yel_2.setOff();
-          g_LED_Grn.setOff();
-          g_LED_Red.setOff();  
+          int s = g_state.getState();
+          if (
+            (s == PTState::pt_ready) ||
+            (s == PTState::pt_locked) ||
+            (s == PTState::pt_disabled)) 
+          {
+            g_state.setState(g_state.pt_menu);
+            g_LED_Blu.setOff();
+            g_LED_Yel_1.setOff();
+            g_LED_Yel_2.setOff();
+            g_LED_Grn.setOff();
+            g_LED_Red.setOff();  
+          }
           break;
       }
       break;

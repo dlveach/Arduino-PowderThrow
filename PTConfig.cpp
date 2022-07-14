@@ -100,6 +100,7 @@ int PTConfig::getTricklerSpeed() {
 void PTConfig::setTricklerSpeed(int value) {
   _config_buffer._config_data.trickler_speed = value;  
   _dirty = true;
+  _updateBLE = true;
 } 
 
 char* PTConfig::getPresetName() { return (_preset_name); }
@@ -123,21 +124,7 @@ void PTConfig::setKernelFactor(float value) { _kernel_factor = value; }
 void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
 float PTConfig::getTargetWeight() { return (_target_weight); }
-/*
-bool PTConfig::getDefaults(byte buffer[]) {
-  int size = sizeof(buffer);
-  Serial.print("Buffer size: ");
-  Serial.println(size);
-  Serial.print("DEFAULTS size: ");
-  Serial.println(CONFIG_DATA_SIZE);
-  if (size < CONFIG_DATA_SIZE) {
-    Serial.println("ERROR: PTConfig::getDefaults(): buffer size too small.");
-    return (false);
-  }
-  memcpy(buffer, _defaults.raw_data, CONFIG_DATA_SIZE);
-  return (true);  
-}
-*/
+
 /* Reset system config to current config buffer.  */
 boolean PTConfig::resetConfig() {
   if (!_readConfigData())  {
