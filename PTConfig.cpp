@@ -21,7 +21,20 @@ PTConfig::PTConfig() {
  * Returns true if successful, false if not. */
 bool PTConfig::init(Adafruit_FRAM_I2C fram, LiquidCrystal_PCF8574 lcd) {
   _fram = fram;
-  _version_reset = false;
+//  _version_reset = false;
+//  _ladder_mode = false;
+  _run_mode = pt_auto;
+//  _ladder_step_count = 0;   
+//  _ladder_start_weight = 0.0; 
+//  _ladder_step_interval = 0.0;  
+/*
+  this->ladder_data.is_configured = false;
+  this->ladder_data.step_count = 0;
+  this->ladder_data.start_weight = 0.0; 
+  this->ladder_data.step_interval = 0.0;  
+*/
+  ladder_data = {false, 0, 0.0, 0.0}; 
+
   if (!loadConfig()) {
     util_handleSystemError(F("Can't load config."));
     _updateBLE = false;
@@ -124,6 +137,30 @@ void PTConfig::setKernelFactor(float value) { _kernel_factor = value; }
 void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
 float PTConfig::getTargetWeight() { return (_target_weight); }
+
+//bool PTConfig::isManualMode() { return (_manual_mode); }
+
+//void PTConfig::setManualMode(bool enabled) { _manual_mode = enabled; }
+
+//bool PTConfig::isLadderMode() { return (_ladder_mode); }
+
+//void PTConfig::setLadderMode(bool enabled) { _ladder_mode = enabled; }
+
+//int PTConfig::getLadderStepCount() { return (_ladder_step_count); }
+
+//void PTConfig::setLadderStepCount(int val) { _ladder_step_count = val; } 
+
+//float PTConfig::getLadderStartWeight() {}
+
+//void PTConfig::setLadderStartWeight(float val) { _ladder_start_weight = val; }
+
+//float PTConfig::getLadderStepInterval() { return (_ladder_step_interval); }
+
+//void PTConfig::setLadderStepInterval(float val) { _ladder_step_interval = val; }
+
+void PTConfig::setRunMode(PTConfig::run_mode_t run_mode) { _run_mode = run_mode; }
+
+PTConfig::run_mode_t PTConfig::getRunMode() { return(_run_mode); }
 
 /* Reset system config to current config buffer.  */
 boolean PTConfig::resetConfig() {

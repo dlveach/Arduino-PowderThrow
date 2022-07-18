@@ -61,8 +61,11 @@ void displayUpdate(bool force)
     ////////////////////////////
     // SYSTEM RUNNING
     ////////////////////////////
-    case g_state.pt_disabled:
     case g_state.pt_ready:
+    case g_state.pt_manual:
+    case g_state.pt_manual_run:
+    case g_state.pt_ladder:
+    case g_state.pt_ladder_run:
     case g_state.pt_throwing:
     case g_state.pt_trickling:
     case g_state.pt_bumping:
@@ -79,6 +82,7 @@ void displayUpdate(bool force)
       g_lcd.print(buff);
       if (_clear_disp) {
         g_lcd.setCursor(0,1);
+        //TODO: handle lader mode
         sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  
         g_lcd.print(buff);
       }

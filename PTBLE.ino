@@ -12,7 +12,7 @@
 970a7c20-e01b-11ec-9d64-0242ac120002 - Powder data structure
 970a71b2-e01b-11ec-9d64-0242ac120002 - Powder List Item
 71ae0138-eda2-11ec-8ea0-0242ac120002 - Trickler calibration data
-71ae0282-eda2-11ec-8ea0-0242ac120002
+71ae0282-eda2-11ec-8ea0-0242ac120002 - Ladder data
 71ae03ea-eda2-11ec-8ea0-0242ac120002
 71ae058e-eda2-11ec-8ea0-0242ac120002
 71ae0b7e-eda2-11ec-8ea0-0242ac120002
@@ -45,8 +45,11 @@
 #define BLE_COMMAND_CALIBRATE_SCALE 0x43
 #define BLE_COMMAND_SYSTEM_SET_STATE 0x50
 #define BLE_COMMAND_SYSTEM_ESTOP 0x51
-#define BLE_COMMAND_SYSTEM_ENABLE 0x52
-//TODO: define ladder command(s)
+#define BLE_COMMAND_SYSTEM_AUTO_ENABLE 0x52
+//#define BLE_COMMAND_SYSTEM_LADDER_SET_START_WEIGHT 0x53
+//#define BLE_COMMAND_SYSTEM_LADDER_SET_STEP_COUNT 0x54
+//#define BLE_COMMAND_SYSTEM_LADDER_SET_INTERVAL 0x55
+#define BLE_COMMAND_SYSTEM_MANUAL_RUN 0x53
 #define BLE_COMMAND_MANUAL_THROW 0x61
 #define BLE_COMMAND_MANUAL_TRICKLE 0x62
 
@@ -64,6 +67,7 @@
 #define BLE_POWDER_DATA_GUID "970a7c20-e01b-11ec-9d64-0242ac120002"
 #define BLE_POWDER_LIST_ITEM_CHAR_GUID "970a71b2-e01b-11ec-9d64-0242ac120002"
 #define BLE_TRICKLER_CAL_DATA_CHAR_GUID "71ae0138-eda2-11ec-8ea0-0242ac120002"
+#define BLE_LADDER_DATA_CHAR_GUID "71ae0282-eda2-11ec-8ea0-0242ac120002"
 
 // BLE misc definitions
 #define PARAMETER_COMMAND_SIZE 2
@@ -107,6 +111,8 @@ BLECharacteristic powderListItemChar(BLE_POWDER_LIST_ITEM_CHAR_GUID, BLERead | B
 BLEDescriptor powderListItemDescriptor("2901", "Powder List Item");
 BLECharacteristic tricklerCalDataChar(BLE_TRICKLER_CAL_DATA_CHAR_GUID, BLERead | BLENotify, 12, true);
 BLEDescriptor tricklerCalDataDescriptor("2901", "Trickler Calibration Data");
+BLECharacteristic ladderDataChar(BLE_LADDER_DATA_CHAR_GUID, BLERead | BLEWrite | BLENotify, 13, true);
+BLEDescriptor ladderDataDescriptor("2901", "Ladder Data");
 
 /*** Setup Bluetooth Low Energy (BLE). ***/
 bool initBLE() {
@@ -135,6 +141,7 @@ bool initBLE() {
   powderDataChar.addDescriptor(powderDataDescriptor);
   powderListItemChar.addDescriptor(powderListItemDescriptor);
   tricklerCalDataChar.addDescriptor(tricklerCalDataDescriptor);
+  ladderDataChar.addDescriptor(ladderDataDescriptor);
 
   // add the characteristic to the service
   ptBLE_Service.addCharacteristic(parameterCommandChar);
@@ -149,6 +156,7 @@ bool initBLE() {
   ptBLE_Service.addCharacteristic(powderDataChar);
   ptBLE_Service.addCharacteristic(powderListItemChar);
   ptBLE_Service.addCharacteristic(tricklerCalDataChar);
+  ptBLE_Service.addCharacteristic(ladderDataChar);
 
   // add service
   BLE.addService(ptBLE_Service);
@@ -163,6 +171,7 @@ bool initBLE() {
   presetDataChar.setEventHandler(BLEWritten, presetDataCharWritten);
   powderDataChar.setEventHandler(BLEWritten, powderDataCharWritten);
   configDataChar.setEventHandler(BLEWritten, configDataCharWritten);
+  ladderDataChar.setEventHandler(BLEWritten, ladderDataCharWritten);
 
   BLE.advertise();
   Serial.println("Bluetooth® device active, waiting for connections..");
@@ -206,6 +215,7 @@ union ByteArrayToValue {
   float_t float_value;
 };
 
+/*** Handler for config data update (on save) from central. ***/
 void configDataCharWritten(BLEDevice central, BLECharacteristic characteristic) {
   Serial.println("Parse data and update config.");
   Serial.print("valueSize: ");
@@ -216,7 +226,6 @@ void configDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   printByteData(characteristic.value(), characteristic.valueSize());
   Serial.println();
 
-  //TODO: can I just copy the characteristic value into the config data union?  Check alignment.  
   ConfigDataStorage new_config;
   memcpy(new_config.raw_data, characteristic.value(), characteristic.valueLength());
   if (new_config._config_data.config_version != CONFIG_VERSION) {
@@ -234,6 +243,38 @@ void configDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
     // Update display
     g_display_changed = true;
     displayUpdate(true);
+  }
+}
+
+/*** Handler for ladder data update (on save) from central. ***/
+void ladderDataCharWritten(BLEDevice central, BLECharacteristic characteristic) {
+  Serial.println("Parse data and update ladder data.");
+  Serial.print("valueSize: ");
+  Serial.println(characteristic.valueSize());
+  Serial.print("valueLength: ");
+  Serial.println(characteristic.valueLength());
+  Serial.print("Data recieved: ");
+  printByteData(characteristic.value(), characteristic.valueSize());
+  Serial.println();
+
+  memcpy(&g_config.ladder_data.is_configured, &characteristic.value()[0], 1);
+  memcpy(&g_config.ladder_data.step_count, &characteristic.value()[1], 4);
+  memcpy(&g_config.ladder_data.start_weight, &characteristic.value()[5], 4);
+  memcpy(&g_config.ladder_data.step_interval, &characteristic.value()[9], 4);
+
+  //TODO: testing:
+  Serial.println("TESTING: display ladder data:");
+  Serial.println(g_config.ladder_data.is_configured);
+  Serial.println(g_config.ladder_data.step_count);
+  Serial.println(g_config.ladder_data.start_weight);
+  Serial.println(g_config.ladder_data.step_interval);
+  
+  if (g_config.ladder_data.is_configured) {
+    Serial.println("Ladder configured, set mode to ladder");
+    g_state.setState(PTState::pt_ladder);
+  } else {
+    Serial.println("Ladder cleared, set mode to manual");
+    g_state.setState(PTState::pt_manual);
   }
 }
 
@@ -445,24 +486,39 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
       stopAll(true);
       break;
 
-    case BLE_COMMAND_SYSTEM_ENABLE:
-      Serial.println("BLE Command: System Enable");
+    case BLE_COMMAND_SYSTEM_AUTO_ENABLE:
       // Ignore if not in correct state
-      if ((g_state.getState() == PTState::pt_ready) || (g_state.getState() == PTState::pt_disabled)) {
-        switch(parameter) {
+      if ((g_state.getState() == PTState::pt_ready) || 
+         (g_state.getState() == PTState::pt_manual) ||
+         (g_state.getState() == PTState::pt_ladder)) 
+      {
+        switch (parameter) {
           case 0:
-            g_state.setState(PTState::pt_ready);
+              g_state.setState(PTState::pt_ready);
             break;
           case 1:
-            g_state.setState(PTState::pt_disabled);
+            if (g_config.ladder_data.is_configured) {
+              g_state.setState(PTState::pt_ladder);
+            } else {
+              g_state.setState(PTState::pt_manual);
+            }
             break;
           default:
-            Serial.println("ERROR: Command System Enable: Unknown parameter.");
-            return;
+              Serial.println("ERROR: Command System Auto Enable: Unknown parameter.");
+              return;
+              break;
             break;
         }
         g_display_changed = true;
         displayUpdate(false);
+      }
+      break;
+
+    case BLE_COMMAND_SYSTEM_MANUAL_RUN:
+      if (g_state.getState() == PTState::pt_ladder) {
+        g_state.setState(PTState::pt_ladder_run);
+      } else if (g_state.getState() == PTState::pt_manual) {
+        g_state.setState(PTState::pt_manual_run);
       }
       break;
 

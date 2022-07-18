@@ -10,23 +10,25 @@
 #define PTState_h
 
 // TODO: change config -> Settings
-static const char* StateNames[] = {"Undefined","Error","Setup","Ready","Throwing",
-  "Trickling","Bumping","Paused","Locked","Menu","Config","Disabled","Man Throw",
+static const char* StateNames[] = {"Undefined","Error","Setup","Ready","Manual","Manual Run","Ladder",
+  "Ladder Run","Throwing","Trickling","Bumping","Paused","Locked","Menu","Config","Man Throw",
   "Man Trickle","Cal Trickler", "Cal Scale","Powders","Edit Powder","Presets","Edit Preset",};
     
-static const char* StateLongNames[] = {"Undefined","Error","Setup","Ready","Throwing",
-  "Trickling","Bumping","Paused","Locked","Menu","Config","Disabled","Manual Throw",
+static const char* StateLongNames[] = {"Undefined","Error","Setup","Ready","Manual","Manual Run","Ladder",
+  "Ladder Run","Throwing","Trickling","Bumping","Paused","Locked","Menu","Config","Manual Throw",
   "Manual Trickle","Calibrate Trickler", "Calibrate Scale","Powders","Edit Powder","Presets","Edit Preset",};
     
-class PTState
-{
+class PTState {
   public:    
-    enum state_t 
-    {
+    enum state_t {
       pt_undefined,
       pt_error,
       pt_setup,
       pt_ready,
+      pt_manual,
+      pt_manual_run,
+      pt_ladder,
+      pt_ladder_run,
       pt_throwing,
       pt_trickling,
       pt_bumping,
@@ -34,7 +36,6 @@ class PTState
       pt_locked,
       pt_menu,
       pt_cfg,
-      pt_disabled,
       pt_man_throw,
       pt_man_trickle,
       pt_man_cal_trickler,

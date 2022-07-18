@@ -33,9 +33,7 @@
 
 #include "PowderThrow.h"
 
-/*
- * The main loop
- */
+/* The main loop */
 void loop() {
   checkButtons();
   runSystem();
@@ -43,17 +41,13 @@ void loop() {
   updateLEDs();
 }
 
-/*
- * BLE stuffs
- */
+/* BLE stuffs */
 void checkBLE() {
   BLE.poll(); 
   if (BLE.connected())  {  updateBLEData(false);  }
 }
 
-/*
- * System run state logic
- */
+/* System run state machine */
 void runSystem() {
   long run_time = millis();
   static long _last_run_time = 0;
@@ -79,7 +73,10 @@ void runSystem() {
   //If not in a running state, do nothing
   int s = g_state.getState();
   if (!((s == PTState::pt_ready) ||
-      (s == PTState::pt_disabled) ||
+      (s == PTState::pt_manual) ||
+      (s == PTState::pt_manual_run) ||
+      (s == PTState::pt_ladder) ||
+      (s == PTState::pt_ladder_run) ||
       (s == PTState::pt_throwing) ||
       (s == PTState::pt_trickling) ||
       (s == PTState::pt_bumping) ||
@@ -87,13 +84,16 @@ void runSystem() {
       (s == PTState::pt_locked)))
   {
     //Not in running state, exit
-    return;  
+      g_LED_Blu.setOff();
+      g_LED_Yel_1.setOff();
+      g_LED_Yel_2.setOff();
+      g_LED_Grn.setOff();
+      g_LED_Red.setOff();
+      return;  
   }
 
-  //TODO: pust user resp dialogs in the next two checks and kick out to menu !!!
+  //TODO: put user resp dialogs in the next two checks and kick out to menu !!!
   
-  //g_scale.checkScale();  //TODO: try moving this up before state check so scale updates during calibration etc.
-
   if (!g_scale.isConnected()) { 
     DEBUGLN(F("Scale not connected while in running state, stop all."));
     //TODO: set a state?  
@@ -137,21 +137,21 @@ void runSystem() {
     return;
   }  
 
-  if (g_state.getState() == PTState::pt_disabled) {
-      g_LED_Blu.setFlash(250);
+  // System has been switched from auto to a manual mode
+  if ((g_state.getState() == PTState::pt_ladder) || (g_state.getState() == PTState::pt_manual)) {
+      g_LED_Blu.setOn();
       g_LED_Yel_1.setOff();
       g_LED_Yel_2.setOff();
       g_LED_Grn.setOff();
-      g_LED_Red.setOn();
+      g_LED_Red.setOff();
       g_display_changed = true; 
       displayUpdate();
     return;
   }
 
-  // Now check to see if scale pan is off in a "running" state.
+  // Stop and lock system if scale pan is off in a "running" state.  I.E. User has lifted pan during a throw.
   if (scale_cond == PTScale::pan_off) {
     switch (g_state.getState()) {
-      //Stop system and lock if in an active running state and pan removed
       case PTState::pt_throwing:
       case PTState::pt_trickling:
       case PTState::pt_bumping:
@@ -169,11 +169,11 @@ void runSystem() {
   // Handle running states
   switch (g_state.getState()) {
     case PTState::pt_ready:
+    case PTState::pt_manual_run:
+    case PTState::pt_ladder_run:
       if ((scale_cond == PTScale::zero) && (g_scale.isStable())) {
         DEBUGLN(F("State == Ready and pan on scale & stable, Start Throwing."));
         g_state.setState(PTState::pt_throwing);
-        Serial.print("config tolerance: ");
-        Serial.println(g_config.getGnTolerance());
       }
       g_LED_Blu.setFlash(1000);
       g_LED_Yel_1.setOff();
@@ -182,7 +182,7 @@ void runSystem() {
       g_LED_Red.setOff();       
       break;
     case PTState::pt_throwing:
-      //TODO: replace this with call to manualThrow() ???? (don't dupe code)
+      //TODO: replace this with call to manualThrow() ???? (don't dupe code).  What about delay() in manualThrow()?
       switch (_thrower_state) {
         case 0: //stopped
           DEBUGLN(F("Thrower stopped, start it forward and start trickler."));
@@ -227,8 +227,7 @@ void runSystem() {
       break;
     case PTState::pt_trickling:
       if (scale_cond == PTScale::close_to_tgt) {
-        //DEBUGP(F("Trickling and close to tgt, slow down. Delta = "));
-        //DEBUGLN(g_scale.getDelta());
+        //DEBUGP(F("Trickling and close to tgt, slow down."));
         setTricklerSpeed();
         g_LED_Blu.setOff();
         g_LED_Yel_1.setFlash();
@@ -324,24 +323,29 @@ void runSystem() {
       if ((run_time - _pause_time) > SYSTEM_PAUSE_TIME) {
         _pause_time = run_time;
         if ((scale_cond == PTScale::close_to_tgt) || (scale_cond == PTScale::very_close_to_tgt)) {
-          DEBUGLN(F("Un-paused and (very) close to tgt, start bumping."));
           g_state.setState(PTState::pt_bumping);        
         } else if (scale_cond == PTScale::on_tgt) {
-          DEBUGLN(F("Un-paused and on target target.  Lock system."));
           g_state.setState(PTState::pt_locked);
-          _lock_time = run_time; //start lock timer
+          _lock_time = run_time; 
         } else if (scale_cond == PTScale::over_tgt) {
-          DEBUGLN(F("Un-paused and over target.  Lock system."));
           g_state.setState(PTState::pt_locked);
-          _lock_time = run_time; //start lock timer
+          _lock_time = run_time; 
         } else if (scale_cond == PTScale::under_tgt) {
-          DEBUGLN(F("Un-paused and under target, resume trickler."));
-          g_state.setState(PTState::pt_trickling);
+          g_state.setState(PTState::pt_trickling); 
           setTricklerSpeed(true);
         } else if (scale_cond == PTScale::zero) {
-          //This is a little strange.  Best way to handle, go back to ready?
-          DEBUGLN(F("WARN: Un-paused and scale at 0.  Return to sys ready state."));
-          g_state.setState(PTState::pt_ready);
+          //This is a little strange.  Not sure it can happen. Best way to handle, go back to ready?
+          Serial.println(F("WARN: Un-paused and scale at 0.  Return to sys ready/manual/ladder state."));
+/*          
+          if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
+          } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
+          } else { g_state.setState(PTState::pt_ready); }
+*/
+            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
+            } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
+            } else { g_state.setState(PTState::pt_ready); }
+
+          _thrower_state = 0;
         } else {
           DEBUGP(F("ERROR: runSystem() paused and unexpected scale condition: "));
           DEBUGLN(g_scale.getConditionName());
@@ -369,26 +373,43 @@ void runSystem() {
         switch (scale_cond) {
           case PTScale::pan_off:
             //reset system for another run
-            DEBUGLN(F("Unlocked and pan off.  Set ready."));
-            g_state.setState(PTState::pt_ready);
+            DEBUGLN(F("Unlocked and pan off.  Set to run again."));
+/*            
+            if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
+            } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
+            } else { g_state.setState(PTState::pt_ready); }
+*/
+            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
+            } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
+            } else { g_state.setState(PTState::pt_ready); }
+
             _thrower_state = 0;
             break;
           case PTScale::on_tgt:
           case PTScale::over_tgt:
-            //pan still on with full (over) charge, start lock timer again
+            //pan still on with full (over) charge, restart lock timer again
             DEBUGLN(F("Unlocked and pan full.  Relock."));
             _lock_time = run_time;
             break;
           case PTScale::close_to_tgt:
           case PTScale::very_close_to_tgt:
-            //charge isn't full, start bumping
+            //charge isn't full, restart bumping
             DEBUGLN(F("Unlocked and under target.  Start bumping."));
             g_state.setState(PTState::pt_bumping);
             break;
           case PTScale::zero:
             //pan back on empty, exit lock
-            DEBUGLN(F("Unlocked and pan back on scale empty.  Set ready."));
-            g_state.setState(PTState::pt_ready);
+            DEBUGLN(F("Unlocked and pan back on scale empty.  Set to run again."));
+/*            
+            if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
+            } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
+            } else { g_state.setState(PTState::pt_ready); }
+*/
+            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
+            } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
+            } else { g_state.setState(PTState::pt_ready); }
+
+            _thrower_state = 0;
           default:
             //ERROR
             DEBUGLN(F("ERROR: runSystem() locked and unexpected scale condition."));
@@ -470,7 +491,6 @@ void bumpTrickler() {
     g_TIC_trickler.setTargetPosition(pos + BUMP_DISTANCE);
   }
 }
-
 
 /*  Stop the stepper drivers. */
 void stopAll(bool setThrowerHome) {

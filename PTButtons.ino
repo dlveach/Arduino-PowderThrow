@@ -70,7 +70,8 @@ void pauseForAnyButton() {
 void handleButton(int btn)
 {  
   static bool _regen_fcurve = false;  //flag to trigger Fcurve regen if parameters changed in config.
-  switch (g_state.getState())
+  int _state = g_state.getState(); 
+  switch (_state)
   {
     ////////////////////////////
     // MENU
@@ -621,39 +622,38 @@ void handleButton(int btn)
       break;
     ////////////////////////////
     // SYSTEM READY
-    // SYSTEM DISABLED
+    // SYSTEM LADDER (Manual)
     ////////////////////////////
     case g_state.pt_ready:
-    case g_state.pt_disabled:
+    case g_state.pt_manual:
+    case g_state.pt_ladder:
       switch (btn)
       {
-        case BTN_LEFT:
-          Serial.println("toggle ready/disabled state.");
+        case BTN_RIGHT:
+          Serial.println("toggle auto/manual.");
           if (g_state.getState() == PTState::pt_ready) {
-            g_state.setState(PTState::pt_disabled);
-          } else if (g_state.getState() == PTState::pt_disabled) {
-            g_state.setState(PTState::pt_ready);
+            Serial.println("--> in auto");
+            if (g_config.ladder_data.is_configured) {
+              Serial.println("--> switch state to ladder");
+              g_state.setState(PTState::pt_ladder);
+            } else {
+              Serial.println("--> switch state to manual");
+              g_state.setState(PTState::pt_manual);
+            }
           } else {
-            return;  // ignore all other states
-          }
+            Serial.println("--> in manual/ladder");
+            Serial.println("--> switch state to auto");
+            g_state.setState(PTState::pt_ready);
+          }       
           g_display_changed = true;
           displayUpdate(false);
           break;
-        case BTN_RIGHT:
-          Serial.println("TODO: next ladder rung?");
-          return;
-        case BTN_UP:  
-          Serial.println("TODO: increment target weight?  Or ladder?");
-          return;
-        case BTN_DOWN:  
-          Serial.println("TODO: decrement target weight?  Or ladder?");
-          return;
-        case BTN_OK:
-          int s = g_state.getState();
+        case BTN_LEFT:
           if (
-            (s == PTState::pt_ready) ||
-            (s == PTState::pt_locked) ||
-            (s == PTState::pt_disabled)) 
+            (_state == PTState::pt_ready) ||
+            (_state == PTState::pt_locked) ||
+            (_state == PTState::pt_manual) ||
+            (_state == PTState::pt_ladder)) 
           {
             g_state.setState(g_state.pt_menu);
             g_LED_Blu.setOff();
@@ -663,6 +663,33 @@ void handleButton(int btn)
             g_LED_Red.setOff();  
           }
           break;
+        case BTN_UP:  
+          if (_state == PTState::pt_ladder) {
+            Serial.println("TODO: Previous ladder step (ladder mode only).");
+          } else {
+            Serial.println("Up button: nothing to do in non-ladder mode?");
+          }
+          break;
+        case BTN_DOWN:  
+          if (_state == PTState::pt_ladder) {
+            Serial.println("TODO: Next ladder step (ladder mode only).");
+          } else {
+            Serial.println("Down button: nothing to do in non-ladder mode?");
+          }
+          break;
+        case BTN_OK:
+          if (_state == PTState::pt_ladder) {
+            if (g_config.ladder_data.is_configured) {
+              Serial.println("Run ladder step.");
+              g_state.setState(PTState::pt_ladder_run);
+            }
+          } else if (_state == PTState::pt_manual) {
+              Serial.println("Run manual charge.");
+              g_state.setState(PTState::pt_manual_run);
+          }
+          break;
+        default:
+          Serial.println("ERROR: Invalid button!");
       }
       break;
     ////////////////////////////

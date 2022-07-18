@@ -104,7 +104,7 @@ bool PTState::isValidState(int value) {
     case pt_locked:
     case pt_menu:
     case pt_cfg:
-    case pt_disabled:
+    case pt_ladder:
     case pt_man_throw:
     case pt_man_trickle:
     case pt_man_cal_trickler:

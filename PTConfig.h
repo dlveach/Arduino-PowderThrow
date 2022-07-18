@@ -52,15 +52,27 @@ typedef union _config_data_storage_t {
   byte raw_data[CONFIG_DATA_SIZE];
 } ConfigDataStorage;
 
-/*
- * Class PTConfig
- */
+typedef struct ladder_data_t {
+  bool is_configured;     // true if ladder is configured
+  int step_count;         // steps in the ladder
+  float start_weight;     // start target weight
+  float step_interval;    // target weight interval per step      
+} LadderData;
+
 class PTConfig {
+
   public:
+    enum run_mode_t {
+      pt_auto,
+      pt_manual,
+      pt_ladder,
+    };
+  
     // Constructor
     PTConfig();
 
     // Vars
+    LadderData ladder_data;
 
     // Getters/Setters for FRAM stored data
     int getVersion();
@@ -101,8 +113,19 @@ class PTConfig {
     void printConfig();
     bool updateBLE(BLECharacteristic);
     bool isRunReady();
-    //bool getDefaults(byte buffer[]);
-    
+    run_mode_t getRunMode();
+    void setRunMode(run_mode_t);
+//    bool isManualMode();
+//    void setManualMode(bool);
+//    bool isLadderMode();
+//    void setLadderMode(bool);
+    int getLadderStepCount();
+    void setLadderStepCount(int);
+    float getLadderStartWeight();
+    void setLadderStartWeight(float);
+    float getLadderStepInterval();
+    void setLadderStepInterval(float);
+
   private:
     // Vars
     ConfigDataStorage _config_buffer;  // FRAM storage read/write buffer
@@ -126,6 +149,14 @@ class PTConfig {
     float _target_weight;           // from current preset
     char _powder_name[NAME_LEN+1];  // from current preset -> powder
     float _kernel_factor;           // from current preset -> powder
+
+    //mode stuffs
+    run_mode_t _run_mode;           // Current run mode
+//    bool _manual_mode;              // "manual" run mode
+//    bool _ladder_mode;              // "ladder" run mode
+//    int _ladder_step_count;         // steps in the ladder
+//    float _ladder_start_weight;     // start target weight
+//    float _ladder_step_interval;    // target weight interval per step
     
     // Functions
     boolean _writeConfigData ();
