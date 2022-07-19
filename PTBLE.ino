@@ -111,7 +111,7 @@ BLECharacteristic powderListItemChar(BLE_POWDER_LIST_ITEM_CHAR_GUID, BLERead | B
 BLEDescriptor powderListItemDescriptor("2901", "Powder List Item");
 BLECharacteristic tricklerCalDataChar(BLE_TRICKLER_CAL_DATA_CHAR_GUID, BLERead | BLENotify, 12, true);
 BLEDescriptor tricklerCalDataDescriptor("2901", "Trickler Calibration Data");
-BLECharacteristic ladderDataChar(BLE_LADDER_DATA_CHAR_GUID, BLERead | BLEWrite | BLENotify, 13, true);
+BLECharacteristic ladderDataChar(BLE_LADDER_DATA_CHAR_GUID, BLERead | BLEWrite | BLENotify, 17, true);
 BLEDescriptor ladderDataDescriptor("2901", "Ladder Data");
 
 /*** Setup Bluetooth Low Energy (BLE). ***/
@@ -259,22 +259,31 @@ void ladderDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
 
   memcpy(&g_config.ladder_data.is_configured, &characteristic.value()[0], 1);
   memcpy(&g_config.ladder_data.step_count, &characteristic.value()[1], 4);
-  memcpy(&g_config.ladder_data.start_weight, &characteristic.value()[5], 4);
-  memcpy(&g_config.ladder_data.step_interval, &characteristic.value()[9], 4);
+  memcpy(&g_config.ladder_data.current_step, &characteristic.value()[5], 4);
+  memcpy(&g_config.ladder_data.start_weight, &characteristic.value()[9], 4);
+  memcpy(&g_config.ladder_data.step_interval, &characteristic.value()[13], 4);
 
   //TODO: testing:
   Serial.println("TESTING: display ladder data:");
   Serial.println(g_config.ladder_data.is_configured);
   Serial.println(g_config.ladder_data.step_count);
+  Serial.println(g_config.ladder_data.current_step);
   Serial.println(g_config.ladder_data.start_weight);
   Serial.println(g_config.ladder_data.step_interval);
   
   if (g_config.ladder_data.is_configured) {
     Serial.println("Ladder configured, set mode to ladder");
     g_state.setState(PTState::pt_ladder);
+    g_config.setRunMode(PTConfig::pt_ladder);
+
+    Serial.println("TODO: set target weight for ladder step");
+
   } else {
     Serial.println("Ladder cleared, set mode to manual");
     g_state.setState(PTState::pt_manual);
+    g_config.setRunMode(PTConfig::pt_manual);
+
+    Serial.println("TODO: reset target weight to current preset");
   }
 }
 
@@ -495,12 +504,15 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
         switch (parameter) {
           case 0:
               g_state.setState(PTState::pt_ready);
+              g_config.setRunMode(PTConfig::pt_auto);
             break;
           case 1:
             if (g_config.ladder_data.is_configured) {
               g_state.setState(PTState::pt_ladder);
+              g_config.setRunMode(PTConfig::pt_ladder);
             } else {
               g_state.setState(PTState::pt_manual);
+              g_config.setRunMode(PTConfig::pt_manual);
             }
             break;
           default:

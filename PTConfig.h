@@ -55,6 +55,7 @@ typedef union _config_data_storage_t {
 typedef struct ladder_data_t {
   bool is_configured;     // true if ladder is configured
   int step_count;         // steps in the ladder
+  int current_step;       // current step in the ladder being run
   float start_weight;     // start target weight
   float step_interval;    // target weight interval per step      
 } LadderData;

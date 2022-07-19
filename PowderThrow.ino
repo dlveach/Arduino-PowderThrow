@@ -334,17 +334,11 @@ void runSystem() {
           g_state.setState(PTState::pt_trickling); 
           setTricklerSpeed(true);
         } else if (scale_cond == PTScale::zero) {
-          //This is a little strange.  Not sure it can happen. Best way to handle, go back to ready?
+          //This is a little strange.  Not sure it can happen. Best way to handle, go back to ready state?
           Serial.println(F("WARN: Un-paused and scale at 0.  Return to sys ready/manual/ladder state."));
-/*          
-          if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
-          } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
+          if (g_config.getRunMode() == PTConfig::pt_ladder) { g_state.setState(PTState::pt_ladder);
+          } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
           } else { g_state.setState(PTState::pt_ready); }
-*/
-            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
-            } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
-            } else { g_state.setState(PTState::pt_ready); }
-
           _thrower_state = 0;
         } else {
           DEBUGP(F("ERROR: runSystem() paused and unexpected scale condition: "));
@@ -374,15 +368,9 @@ void runSystem() {
           case PTScale::pan_off:
             //reset system for another run
             DEBUGLN(F("Unlocked and pan off.  Set to run again."));
-/*            
-            if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
-            } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
-            } else { g_state.setState(PTState::pt_ready); }
-*/
-            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
+            if (g_config.getRunMode() == PTConfig::pt_ladder) { g_state.setState(PTState::pt_ladder);
             } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
             } else { g_state.setState(PTState::pt_ready); }
-
             _thrower_state = 0;
             break;
           case PTScale::on_tgt:
@@ -400,15 +388,9 @@ void runSystem() {
           case PTScale::zero:
             //pan back on empty, exit lock
             DEBUGLN(F("Unlocked and pan back on scale empty.  Set to run again."));
-/*            
-            if (g_config.isLadderMode()) { g_state.setState(PTState::pt_ladder);
-            } else if (g_config.isManualMode()) { g_state.setState(PTState::pt_manual); 
-            } else { g_state.setState(PTState::pt_ready); }
-*/
-            if (g_config.getRunMode() == PTConfig::pt_auto) { g_state.setState(PTState::pt_ladder);
+            if (g_config.getRunMode() == PTConfig::pt_ladder) { g_state.setState(PTState::pt_ladder);
             } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
             } else { g_state.setState(PTState::pt_ready); }
-
             _thrower_state = 0;
           default:
             //ERROR
