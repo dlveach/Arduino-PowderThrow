@@ -138,27 +138,13 @@ void PTConfig::setTargetWeight(float value) { _target_weight = value; }
 
 float PTConfig::getTargetWeight() { return (_target_weight); }
 
-//bool PTConfig::isManualMode() { return (_manual_mode); }
-
-//void PTConfig::setManualMode(bool enabled) { _manual_mode = enabled; }
-
-//bool PTConfig::isLadderMode() { return (_ladder_mode); }
-
-//void PTConfig::setLadderMode(bool enabled) { _ladder_mode = enabled; }
-
-//int PTConfig::getLadderStepCount() { return (_ladder_step_count); }
-
-//void PTConfig::setLadderStepCount(int val) { _ladder_step_count = val; } 
-
-//float PTConfig::getLadderStartWeight() {}
-
-//void PTConfig::setLadderStartWeight(float val) { _ladder_start_weight = val; }
-
-//float PTConfig::getLadderStepInterval() { return (_ladder_step_interval); }
-
-//void PTConfig::setLadderStepInterval(float val) { _ladder_step_interval = val; }
-
-void PTConfig::setRunMode(PTConfig::run_mode_t run_mode) { _run_mode = run_mode; }
+void PTConfig::setRunMode(PTConfig::run_mode_t run_mode) { 
+  _run_mode = run_mode; 
+  if (_run_mode == pt_ladder) {
+    sprintf(_preset_name, "Step:%02d/%02d", ladder_data.current_step, ladder_data.step_count);
+    _target_weight = ladder_data.start_weight + (ladder_data.step_interval * (ladder_data.current_step - 1));
+  }
+}
 
 PTConfig::run_mode_t PTConfig::getRunMode() { return(_run_mode); }
 

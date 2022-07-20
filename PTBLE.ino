@@ -13,7 +13,7 @@
 970a71b2-e01b-11ec-9d64-0242ac120002 - Powder List Item
 71ae0138-eda2-11ec-8ea0-0242ac120002 - Trickler calibration data
 71ae0282-eda2-11ec-8ea0-0242ac120002 - Ladder data
-71ae03ea-eda2-11ec-8ea0-0242ac120002
+71ae03ea-eda2-11ec-8ea0-0242ac120002 - Screen Navigation (more explicit and not dependent on system state, esp for local button navigigation)
 71ae058e-eda2-11ec-8ea0-0242ac120002
 71ae0b7e-eda2-11ec-8ea0-0242ac120002
 71ae0d18-eda2-11ec-8ea0-0242ac120002
@@ -46,12 +46,17 @@
 #define BLE_COMMAND_SYSTEM_SET_STATE 0x50
 #define BLE_COMMAND_SYSTEM_ESTOP 0x51
 #define BLE_COMMAND_SYSTEM_AUTO_ENABLE 0x52
-//#define BLE_COMMAND_SYSTEM_LADDER_SET_START_WEIGHT 0x53
-//#define BLE_COMMAND_SYSTEM_LADDER_SET_STEP_COUNT 0x54
-//#define BLE_COMMAND_SYSTEM_LADDER_SET_INTERVAL 0x55
 #define BLE_COMMAND_SYSTEM_MANUAL_RUN 0x53
 #define BLE_COMMAND_MANUAL_THROW 0x61
 #define BLE_COMMAND_MANUAL_TRICKLE 0x62
+
+// BLE Screen Navigation
+#define BLE_SCREEN_GO_BACK 0
+#define BLE_SCREEN_MENU 1
+#define BLE_SCREEN_RUN 2
+#define BLE_SCREEN_SETTINGS 3
+#define BLE_SCREEN_PRESETS 4
+#define BLE_SCREEN_POWDERS 5
 
 // BLE Services and Charactaristics
 #define BLE_SERVICE_GUID "970a6f6e-e01b-11ec-9d64-0242ac120002"
@@ -68,6 +73,7 @@
 #define BLE_POWDER_LIST_ITEM_CHAR_GUID "970a71b2-e01b-11ec-9d64-0242ac120002"
 #define BLE_TRICKLER_CAL_DATA_CHAR_GUID "71ae0138-eda2-11ec-8ea0-0242ac120002"
 #define BLE_LADDER_DATA_CHAR_GUID "71ae0282-eda2-11ec-8ea0-0242ac120002"
+#define BLE_SCREEN_NAVIGATION "71ae03ea-eda2-11ec-8ea0-0242ac120002"
 
 // BLE misc definitions
 #define PARAMETER_COMMAND_SIZE 2
@@ -113,6 +119,8 @@ BLECharacteristic tricklerCalDataChar(BLE_TRICKLER_CAL_DATA_CHAR_GUID, BLERead |
 BLEDescriptor tricklerCalDataDescriptor("2901", "Trickler Calibration Data");
 BLECharacteristic ladderDataChar(BLE_LADDER_DATA_CHAR_GUID, BLERead | BLEWrite | BLENotify, 17, true);
 BLEDescriptor ladderDataDescriptor("2901", "Ladder Data");
+BLEIntCharacteristic screenNavigationChar(BLE_SCREEN_NAVIGATION, BLERead | BLEWrite | BLENotify);
+BLEDescriptor screenNavigationDescriptor("2901", "Screen Navigation");
 
 /*** Setup Bluetooth Low Energy (BLE). ***/
 bool initBLE() {
@@ -142,6 +150,7 @@ bool initBLE() {
   powderListItemChar.addDescriptor(powderListItemDescriptor);
   tricklerCalDataChar.addDescriptor(tricklerCalDataDescriptor);
   ladderDataChar.addDescriptor(ladderDataDescriptor);
+  screenNavigationChar.addDescriptor(screenNavigationDescriptor);
 
   // add the characteristic to the service
   ptBLE_Service.addCharacteristic(parameterCommandChar);
@@ -157,6 +166,7 @@ bool initBLE() {
   ptBLE_Service.addCharacteristic(powderListItemChar);
   ptBLE_Service.addCharacteristic(tricklerCalDataChar);
   ptBLE_Service.addCharacteristic(ladderDataChar);
+  ptBLE_Service.addCharacteristic(screenNavigationChar);
 
   // add service
   BLE.addService(ptBLE_Service);
@@ -188,16 +198,12 @@ void blePeripheralConnectHandler(BLEDevice central) {
 
 /* Handle a disconnect from the BLE central */
 void blePeripheralDisconnectHandler(BLEDevice central) {
-  // central disconnected event handler
   Serial.print("Disconnected event, central: ");
   Serial.println(central.address());
   g_mcp.digitalWrite(MCP_LED_PUR_PIN, LOW);
 }
 
-/*
- * Handler for decel threshold update from device slider
- * TODO: Write FRAM every update?  Use user action with button on phone?
- */
+/* Handler for decel threshold update from device slider.  */
 void decelThreshSliderCharWritten(BLEDevice central, BLECharacteristic characteristic) {
   static float floatval;
   characteristic.readValue(&floatval, 4);
@@ -246,9 +252,13 @@ void configDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   }
 }
 
-/*** Handler for ladder data update (on save) from central. ***/
+/*** Handler for ladder data update from central. ***/
 void ladderDataCharWritten(BLEDevice central, BLECharacteristic characteristic) {
+  static char buff[NAME_LEN + 1];
+  static ByteArrayToValue converter;
+
   Serial.println("Parse data and update ladder data.");
+/*
   Serial.print("valueSize: ");
   Serial.println(characteristic.valueSize());
   Serial.print("valueLength: ");
@@ -256,34 +266,33 @@ void ladderDataCharWritten(BLEDevice central, BLECharacteristic characteristic) 
   Serial.print("Data recieved: ");
   printByteData(characteristic.value(), characteristic.valueSize());
   Serial.println();
-
+*/  
   memcpy(&g_config.ladder_data.is_configured, &characteristic.value()[0], 1);
-  memcpy(&g_config.ladder_data.step_count, &characteristic.value()[1], 4);
-  memcpy(&g_config.ladder_data.current_step, &characteristic.value()[5], 4);
-  memcpy(&g_config.ladder_data.start_weight, &characteristic.value()[9], 4);
-  memcpy(&g_config.ladder_data.step_interval, &characteristic.value()[13], 4);
-
-  //TODO: testing:
-  Serial.println("TESTING: display ladder data:");
-  Serial.println(g_config.ladder_data.is_configured);
-  Serial.println(g_config.ladder_data.step_count);
-  Serial.println(g_config.ladder_data.current_step);
-  Serial.println(g_config.ladder_data.start_weight);
-  Serial.println(g_config.ladder_data.step_interval);
-  
   if (g_config.ladder_data.is_configured) {
     Serial.println("Ladder configured, set mode to ladder");
+    memcpy(converter.array, &characteristic.value()[1], 4);
+    g_config.ladder_data.step_count = converter.int_value;
+    memcpy(converter.array, &characteristic.value()[5], 4);
+    g_config.ladder_data.current_step = converter.int_value;
+    memcpy(converter.array, &characteristic.value()[9], 4);
+    g_config.ladder_data.start_weight = converter.float_value;
+    memcpy(converter.array, &characteristic.value()[13], 4);
+    g_config.ladder_data.step_interval = converter.float_value;
     g_state.setState(PTState::pt_ladder);
     g_config.setRunMode(PTConfig::pt_ladder);
-
-    Serial.println("TODO: set target weight for ladder step");
-
+    g_display_changed = true;
+    displayUpdate(true);
   } else {
     Serial.println("Ladder cleared, set mode to manual");
+    g_config.ladder_data.step_count = 0;
+    g_config.ladder_data.current_step = 0;
+    g_config.ladder_data.start_weight = 0.0;
+    g_config.ladder_data.step_interval = 0.0;
     g_state.setState(PTState::pt_manual);
-    g_config.setRunMode(PTConfig::pt_manual);
-
-    Serial.println("TODO: reset target weight to current preset");
+    g_config.setRunMode(PTConfig::pt_manual);    
+    setConfigPresetData();
+    g_display_changed = true;
+    displayUpdate(true);
   }
 }
 
@@ -505,6 +514,7 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
           case 0:
               g_state.setState(PTState::pt_ready);
               g_config.setRunMode(PTConfig::pt_auto);
+              setConfigPresetData();
             break;
           case 1:
             if (g_config.ladder_data.is_configured) {
@@ -513,6 +523,7 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
             } else {
               g_state.setState(PTState::pt_manual);
               g_config.setRunMode(PTConfig::pt_manual);
+              setConfigPresetData();
             }
             break;
           default:
@@ -522,7 +533,7 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
             break;
         }
         g_display_changed = true;
-        displayUpdate(false);
+        displayUpdate(true);
       }
       break;
 
@@ -782,6 +793,10 @@ void updateBLEData(bool force) {
 /////////////////////
 // Support functions for both dynamic and on demand BLE updates:
 /////////////////////
+
+void BLEWriteScreenChange(int new_screen) {
+  if (!screenNavigationChar.writeValue(new_screen)) { Serial.println("BLE Failed to write screen change."); }
+}
 
 void BLEWritePresetDataAt(int index) {
   // preset data struct now refactored and includes preset number (index + 1)

@@ -41,6 +41,8 @@ void displayUpdate(bool force)
 {
 //                        12345678901234567890
   static char buff[21] = "                    ";
+  static char name1[NAME_LEN+1];
+  static char name2[NAME_LEN+1];
   static bool _clear_disp = true; //static flag to avoid clear on every state update
   if (force) { _clear_disp = true; }  // forced refresh
   if (!g_display_changed) return;
@@ -82,8 +84,13 @@ void displayUpdate(bool force)
       g_lcd.print(buff);
       if (_clear_disp) {
         g_lcd.setCursor(0,1);
-        //TODO: handle lader mode
-        sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  
+        //sprintf(buff, "%02d %-8s %-8s", g_config.getPreset()+1, g_config.getPresetName(), g_config.getPowderName());  
+        //TODO: truncate preset/powder names?
+        snprintf(name1, 11, "%-s", g_config.getPresetName());
+        name1[10] = 0x00;
+        snprintf(name2, 10, "%-s", g_config.getPowderName());
+        name2[9] = 0x00;
+        sprintf(buff, "%-10s %-9s", name1, name2);  
         g_lcd.print(buff);
       }
       

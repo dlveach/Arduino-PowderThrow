@@ -88,23 +88,29 @@ void handleButton(int btn)
               switch (g_cur_line)
               {
                 case 0:
-                  if (g_config.isRunReady()) { g_state.setState(g_state.pt_ready); }
+                  if (g_config.isRunReady()) { 
+                    g_state.setState(g_state.pt_ready); 
+                    BLEWriteScreenChange(BLE_SCREEN_RUN);
+                  }
                   g_display_changed = true;
                   break;
                 case 1:
                   g_state.setState(g_state.pt_cfg);
                   g_prev_line = g_cur_line;
                   g_cur_line = 0;
+                  BLEWriteScreenChange(BLE_SCREEN_SETTINGS);
                   break;
                 case 2:
                   g_state.setState(g_state.pt_presets);
                   g_prev_line = g_cur_line;
                   g_cur_line = 0;
+                  BLEWriteScreenChange(BLE_SCREEN_PRESETS);
                   break;
                 case 3:
                   g_state.setState(g_state.pt_powders);
                   g_prev_line = g_cur_line;
                   g_cur_line = 0;
+                  BLEWriteScreenChange(BLE_SCREEN_POWDERS);
                   break;
                 default:
                   DEBUGLN(F("WARN: Bad Line Number.")); //shouldn't happen
@@ -183,6 +189,7 @@ void handleButton(int btn)
           {
             g_cur_line = g_prev_line;
             g_state.setState(g_state.pt_menu);
+            BLEWriteScreenChange(BLE_SCREEN_MENU);
           }
           break;
         case BTN_RIGHT:
@@ -295,6 +302,7 @@ void handleButton(int btn)
         case BTN_LEFT:
           g_cur_line = g_prev_line;
           g_state.setState(g_state.pt_menu);
+          BLEWriteScreenChange(BLE_SCREEN_MENU);
           break;
         case BTN_RIGHT:
           g_state.setState(g_state.pt_presets_edit);
@@ -462,6 +470,7 @@ void handleButton(int btn)
         case BTN_LEFT:
           g_cur_line = g_prev_line;
           g_state.setState(g_state.pt_menu);
+          BLEWriteScreenChange(BLE_SCREEN_MENU);
           break;
         case BTN_RIGHT:
           g_state.setState(g_state.pt_powders_edit);
@@ -630,23 +639,21 @@ void handleButton(int btn)
       switch (btn)
       {
         case BTN_RIGHT:
-          Serial.println("toggle auto/manual.");
           if (g_state.getState() == PTState::pt_ready) {
-            Serial.println("--> in auto");
             if (g_config.ladder_data.is_configured) {
-              Serial.println("--> switch state to ladder");
               g_state.setState(PTState::pt_ladder);
+              g_config.setRunMode(PTConfig::pt_ladder);
             } else {
-              Serial.println("--> switch state to manual");
               g_state.setState(PTState::pt_manual);
+              g_config.setRunMode(PTConfig::pt_manual);
+              setConfigPresetData();
             }
           } else {
-            Serial.println("--> in manual/ladder");
-            Serial.println("--> switch state to auto");
             g_state.setState(PTState::pt_ready);
+            setConfigPresetData();
           }       
           g_display_changed = true;
-          displayUpdate(false);
+          displayUpdate(true);
           break;
         case BTN_LEFT:
           if (
@@ -661,18 +668,19 @@ void handleButton(int btn)
             g_LED_Yel_2.setOff();
             g_LED_Grn.setOff();
             g_LED_Red.setOff();  
+            BLEWriteScreenChange(BLE_SCREEN_MENU);
           }
           break;
         case BTN_UP:  
           if (_state == PTState::pt_ladder) {
-            Serial.println("TODO: Previous ladder step (ladder mode only).");
+            Serial.println("TODO: FUTURE: Previous ladder step (ladder mode only).");
           } else {
             Serial.println("Up button: nothing to do in non-ladder mode?");
           }
           break;
         case BTN_DOWN:  
           if (_state == PTState::pt_ladder) {
-            Serial.println("TODO: Next ladder step (ladder mode only).");
+            Serial.println("TODO: FUTRE: Next ladder step (ladder mode only).");
           } else {
             Serial.println("Down button: nothing to do in non-ladder mode?");
           }
