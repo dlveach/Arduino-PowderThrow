@@ -25,21 +25,41 @@ char decChar(char c) {
   return c;
 }
 
+void printHexData(const unsigned char data[], int len) {
+#ifdef DEBUG_SERIAL
+  for (int i = 0; i < len; i++) {
+    unsigned char b = data[i];
+    Serial.print(b, HEX);
+  }
+  Serial.println();
+#endif  
+}
+
+void printStringData(const unsigned char data[], int len) {
+#ifdef DEBUG_SERIAL
+  char c;
+  for (int i = 0; i < len; i++) {
+    c = toascii(data[i]);
+    Serial.print(c);
+  }
+  Serial.println();
+#endif  
+}
+
 void printByteData(const unsigned char data[], int len) {
-  //TODO: wrap in #ifdef DEBUG_SERIAL
+#ifdef DEBUG_SERIAL
   static char buff[5];
   Serial.print("[");
   for (int i = 0; i < len - 1; i++) {
     sprintf(buff, "%d", byte(data[i]));
     Serial.print(buff);
-    if (((i+1) % 10) == 0) { //0 based index, break every 10
-      Serial.print(" | ");
-    } else {
-      Serial.print(", ");
-    }
+    if (((i+1) % 10) == 0) { Serial.print(" | ");
+    } else { Serial.print(", "); }
   }
   sprintf(buff, "%d]", byte(data[len - 1]));
   Serial.print(buff);
+  Serial.println();
+#endif  
 }
 
 /*** Overwrite entire FRAM with 0x00 to erase all storage. ***/

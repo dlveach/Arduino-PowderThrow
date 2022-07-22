@@ -213,8 +213,7 @@ void runSystem() {
           }        
           break;
         default:
-          DEBUGP(F("ERROR Unknown thrower state. runSystem() line "));
-          DEBUGLN(__LINE__);
+          logError("Unknown thrower state.", __FILE__, __LINE__);
           g_display_changed = true; 
           displayUpdate();
           return;
@@ -227,7 +226,6 @@ void runSystem() {
       break;
     case PTState::pt_trickling:
       if (scale_cond == PTScale::close_to_tgt) {
-        //DEBUGP(F("Trickling and close to tgt, slow down."));
         setTricklerSpeed();
         g_LED_Blu.setOff();
         g_LED_Yel_1.setFlash();
@@ -266,9 +264,8 @@ void runSystem() {
         DEBUGLN(F("WARN: Trickling and scale at zero.  Set ready to try throw again."));
         g_state.setState(PTState::pt_ready);
       } else {
-        DEBUGP(F("ERROR: runSystem() trickling and unexpected scale condition: "));
-        DEBUGLN(g_scale.getConditionName());
-        DEBUGLN(F("Lock system."));
+        sprintf(g_msg, "Trickling and unexpected scale condition %s", ConditionNames[scale_cond]);
+        logError(g_msg, __FILE__, __LINE__);
         //TODO: should we really exit here and lock?
         g_state.setState(PTState::pt_locked);
         _lock_time = run_time;
@@ -291,9 +288,8 @@ void runSystem() {
         g_state.setState(PTState::pt_trickling); 
         setTricklerSpeed(true);
       } else if (scale_cond != PTScale::very_close_to_tgt) {
-        DEBUGP(F("ERROR: runSystem() bumping and unexpected scale condition: "));
-        DEBUGLN(g_scale.getConditionName());
-        DEBUGLN(F("Lock system."));
+        sprintf(g_msg, "Bumping and unexpected scale condition %s", ConditionNames[scale_cond]);
+        logError(g_msg, __FILE__, __LINE__);
         //TODO: should we really exit here and lock?
         g_state.setState(PTState::pt_locked);
         _lock_time = run_time;
@@ -335,15 +331,14 @@ void runSystem() {
           setTricklerSpeed(true);
         } else if (scale_cond == PTScale::zero) {
           //This is a little strange.  Not sure it can happen. Best way to handle, go back to ready state?
-          Serial.println(F("WARN: Un-paused and scale at 0.  Return to sys ready/manual/ladder state."));
+          logError("Un-paused and scale at 0.  Return to sys ready/manual/ladder state.", __FILE__, __LINE__);
           if (g_config.getRunMode() == PTConfig::pt_ladder) { g_state.setState(PTState::pt_ladder);
           } else if (g_config.getRunMode() == PTConfig::pt_manual) { g_state.setState(PTState::pt_manual); 
           } else { g_state.setState(PTState::pt_ready); }
           _thrower_state = 0;
         } else {
-          DEBUGP(F("ERROR: runSystem() paused and unexpected scale condition: "));
-          DEBUGLN(g_scale.getConditionName());
-          DEBUGLN(F("Pausing again."));
+          sprintf(g_msg, "Paused and unexpected scale condition %s", ConditionNames[scale_cond]);
+          logError(g_msg, __FILE__, __LINE__);
           g_state.setState(PTState::pt_paused);
         }
       }
@@ -511,8 +506,7 @@ void manualThrow() {
   static bool _lock = false;  
 
   if (g_TIC_thrower.getOperationState() != TicOperationState::Normal) {
-    DEBUGP(F("ERROR: Thrower not in operational state.  manualThrow() line "));
-    DEBUGLN(__LINE__); 
+    logError("Thrower not in operational state.", __FILE__, __LINE__);
     return;
   }
   if (_lock) { return; } else { _lock = true; }  //only allow one call at a time
@@ -522,7 +516,7 @@ void manualThrow() {
   long timeout = millis();
   while (throwing) {
     if ((millis() - timeout) >= 10000) { //timeout after 10 seconds, for safety
-      DEBUGLN(F("ERROR: manual throw timeed out"));
+      logError("Manual throw timeed out", __FILE__, __LINE__);
       break;
     }
     switch (thrower_state) {
@@ -547,8 +541,7 @@ void manualThrow() {
         }        
         break;
       default:
-        DEBUGP(F("ERROR Unknown thrower state. manualThrow() line "));
-        DEBUGLN(__LINE__);
+        logError("Unknown thrower state.", __FILE__, __LINE__);
         throwing = false;
         break;  
     }
@@ -681,16 +674,13 @@ void calibrateTrickler() {
   g_lcd.print("Avg gn/s:");
 
   // Start the test
-  Serial.print("Start trickler at: ");
-  Serial.println(millis());
+
   g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);
   last_check = millis();
   while (((millis() - last_check) < 2000) && _running) {
     checkButtons();
     BLE.poll();
   }
-  Serial.print("Starting calibration loop at: ");
-  Serial.println(millis());
   while (_running) {
     if ((millis() - last_check) > 2000) {
       last_check = millis();
@@ -707,7 +697,7 @@ void calibrateTrickler() {
       g_scale.checkScale();  // what if scale comm fails or not in good state?
       if (g_scale.getMode() != SCALE_MODE_GRAIN) {
         // User switched scale during calibrate, bail out and fail!!!
-        Serial.println("ERROR: scale not in grains during calibrate!");
+        logError("Scale not in grains during calibrate.", __FILE__, __LINE__);
         _running = false;
         success = false;
         break;
@@ -717,7 +707,7 @@ void calibrateTrickler() {
       last_weight = weight;
       if (diff <= 0) {
         //This should never happen, just here for testing.
-        Serial.println("Diff below zero, skipping sample!!!");
+        DEBUGLN(F("Diff below zero while calibrating trickler, skipping sample!!!"));
       } else {
         //Calculate moving average of 5 samples.
         tot = 0;
@@ -771,7 +761,7 @@ void calibrateTrickler() {
   g_lcd.setCursor(0,0);
   g_lcd.print("Calibrate Trickler:");
   if (success) {
-    Serial.println("Calibration success");
+    DEBUGLN(F("Calibration success"));
     if (BLE.connected()) {
       count = -99;  //stop signal to BLE central
       memcpy(&ble_data[0], &count, 4);

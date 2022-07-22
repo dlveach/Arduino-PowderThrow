@@ -20,7 +20,7 @@
 #include "PTLed.h"
 
 #define VERSION F("2.0")
-#define BUILD   F("107")
+#define BUILD   F("108")
 
 //HARDWARE
 #define LCD_I2C_ADDR 0x27     // PCF8574 I2C 20x4 LCD shield (SunFounder)
@@ -63,7 +63,7 @@
 #define BUMP_INTERVAL 800               //bump interval  
 #define BUMP_DISTANCE 75                //steps to bump  
 
-//GUI config edit settings
+//GUI config edit setting
 #define DECEL_THRESH_INC 0.1
 #define DECEL_THRESH_INC_LIMIT 1.5
 #define DECEL_THRESH_DEC_LIMIT 0.5

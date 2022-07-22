@@ -28,8 +28,6 @@ void checkButtons() {
         interrupted = true;
         interrupt_time = millis();
         int btn = g_mcp.getLastInterruptPin();
-        //Serial.print("Button Pressed: ");
-        //Serial.println(btn);
         handleButton(btn);
       }
     }
@@ -228,8 +226,7 @@ void handleButton(int btn)
                 }
                 break;
               default:
-                DEBUGP(F("ERROR: bad value for g_cur_line: "));
-                DEBUGLN(__LINE__);
+                logError("Bad value for g_cur_line: ", __FILE__, __LINE__);
                 return;
             }
           }
@@ -270,8 +267,7 @@ void handleButton(int btn)
                 }
                 break;
               default:
-                DEBUGP(F("ERROR: bad value for g_cur_line: "));
-                DEBUGLN(__LINE__);
+                logError("Bad value for g_cur_line: ", __FILE__, __LINE__);
                 return;
             }
           }
@@ -456,8 +452,7 @@ void handleButton(int btn)
           }
           break;
         default:
-          DEBUGP(F("ERROR: bad value for g_cur_line: "));
-          DEBUGLN(__LINE__);
+          logError("Bad value for g_cur_line: ", __FILE__, __LINE__);
           return;
       }
       break;
@@ -673,31 +668,31 @@ void handleButton(int btn)
           break;
         case BTN_UP:  
           if (_state == PTState::pt_ladder) {
-            Serial.println("TODO: FUTURE: Previous ladder step (ladder mode only).");
+            DEBUGLN(F("TODO: FUTURE: Previous ladder step (ladder mode only)."));
           } else {
-            Serial.println("Up button: nothing to do in non-ladder mode?");
+            DEBUGLN(F("Up button: nothing to do in non-ladder mode?"));
           }
           break;
         case BTN_DOWN:  
           if (_state == PTState::pt_ladder) {
-            Serial.println("TODO: FUTRE: Next ladder step (ladder mode only).");
+            DEBUGLN(F("TODO: FUTRE: Next ladder step (ladder mode only)."));
           } else {
-            Serial.println("Down button: nothing to do in non-ladder mode?");
+            DEBUGLN(F("Down button: nothing to do in non-ladder mode?"));
           }
           break;
         case BTN_OK:
           if (_state == PTState::pt_ladder) {
             if (g_config.ladder_data.is_configured) {
-              Serial.println("Run ladder step.");
+              DEBUGLN(F("Run ladder step."));
               g_state.setState(PTState::pt_ladder_run);
             }
           } else if (_state == PTState::pt_manual) {
-              Serial.println("Run manual charge.");
+              DEBUGLN(F("Run manual charge."));
               g_state.setState(PTState::pt_manual_run);
           }
           break;
         default:
-          Serial.println("ERROR: Invalid button!");
+          logError("Invalid button.", __FILE__, __LINE__);
       }
       break;
     ////////////////////////////

@@ -151,10 +151,9 @@ PTConfig::run_mode_t PTConfig::getRunMode() { return(_run_mode); }
 /* Reset system config to current config buffer.  */
 boolean PTConfig::resetConfig() {
   if (!_readConfigData())  {
-    DEBUGLN(F("resetConfig(): ERROR: could not read FRAM storage."));
+    logError("Could not read FRAM storage.", __FILE__, __LINE__);
     return (false);
   }  
-  DEBUGLN(F("resetConfig(): reset settings to last saved values."));
   _dirty = false;
   return (true);
 }
@@ -163,11 +162,11 @@ boolean PTConfig::resetConfig() {
 boolean PTConfig::loadConfig() {
   DEBUGLN(F("loadConfig(): reading FRAM storage for config."));
   if (!_readConfigData())  {
-    DEBUGLN(F("loadConfig(): ERROR: could not read FRAM storage."));
+    logError("Could not read FRAM storage.", __FILE__, __LINE__);
     return (false);
   } else {
     if (_config_buffer._config_data.config_version != CONFIG_VERSION)  {
-      DEBUGLN(F("loadConfig(): Config version out of sync, set to defaults."));    
+      DEBUGLN(F("WARN: Config version out of sync, set to defaults."));    
       saveConfig(true);
       _version_reset = true;
     }
@@ -180,11 +179,10 @@ boolean PTConfig::loadConfig() {
  * Returns true if successful, false if not. */
 boolean PTConfig::saveConfig(boolean init) {
  if (init) {
-    DEBUGLN(F("saveSettings(): Initializing config to defaults."));
+    DEBUGLN(F("WARN: saveConfig(): Initializing config to defaults."));
     _config_buffer = _defaults;
   }
   if (!_dirty) { return (true); } //no changes to save
-  DEBUGLN(F("saveSettings(): Saving config settings to FRAM storage."));
   if (_writeConfigData()) {
     _dirty = false;
     return (true);

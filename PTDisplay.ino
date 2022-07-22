@@ -153,10 +153,7 @@ void displayUpdate(bool force)
         g_lcd.print(F("  Calibrate Scale   "));
         g_lcd.setCursor(19,0);
         g_lcd.print(LCD_UP_ARROW);
-      } else {
-        Serial.print("ERROR: invalid page at updateDisplay(): ");
-        Serial.println(__LINE__);
-      }
+      } else { logError("Invalid page.", __FILE__, __LINE__); }
       g_lcd.setCursor(0,g_cur_line);
       g_lcd.print(F(">>"));      _clear_disp = true;
       break;
@@ -356,10 +353,7 @@ void displayUpdate(bool force)
 void pad(char* buff)
 {
   if (strlen(buff) > 20) {
-    DEBUGLN(F("ERROR: Display pad(), buffer overflow."));
-    DEBUGP(F("buff = '"));
-    DEBUGP(buff);
-    DEBUGLN(F("'"));
+    logError("Display buffer overflow.", __FILE__, __LINE__);
     buff[20]=0x00;
     return;
   }

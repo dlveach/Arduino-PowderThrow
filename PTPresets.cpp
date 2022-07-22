@@ -39,8 +39,6 @@ bool PresetManager::isDefined()
  */
 int PresetManager::getCurrentPreset()
 {
-  //Serial.print("getCurrentPreset() _cur_preset: ");
-  //Serial.println(_cur_preset);
   return (_cur_preset);  
 }
 
