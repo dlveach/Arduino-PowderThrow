@@ -241,7 +241,6 @@ void handleButton(int btn)
             switch (g_cur_line)
             {
               case 0:
-                //if ((g_config.getDecelThreshold() - 2*DECEL_THRESH_INC) > g_config.getBumpThreshold())
                 if ((g_config.getDecelThreshold() - DECEL_THRESH_INC) > DECEL_THRESH_DEC_LIMIT) 
                 {
                   g_config.setDecelThreshold(g_config.getDecelThreshold() - DECEL_THRESH_INC);
@@ -299,6 +298,9 @@ void handleButton(int btn)
           g_cur_line = g_prev_line;
           g_state.setState(g_state.pt_menu);
           BLEWriteScreenChange(BLE_SCREEN_MENU);
+          g_presets.loadPreset(g_config.getPreset());
+          BLEWritePresetDataAt(g_presets.getCurrentPreset());
+          BLEWritePowderDataAt(g_presets.getPowderIndex());
           break;
         case BTN_RIGHT:
           g_state.setState(g_state.pt_presets_edit);
@@ -307,19 +309,23 @@ void handleButton(int btn)
         case BTN_UP:
           if (g_presets.getCurrentPreset() == 0) { return; }
           g_presets.loadPreset(g_presets.getCurrentPreset()-1);
+          BLEWritePresetDataAt(g_presets.getCurrentPreset());
+          BLEWritePowderDataAt(g_presets.getPowderIndex());
           g_cur_line = 0;
           break;
         case BTN_DOWN:
           if (g_presets.getCurrentPreset() == MAX_PRESETS) { return; }
           g_presets.loadPreset(g_presets.getCurrentPreset()+1);
+          BLEWritePresetDataAt(g_presets.getCurrentPreset());
+          BLEWritePowderDataAt(g_presets.getPowderIndex());
           g_cur_line = 0;
           break;
         case BTN_OK:
-          if (g_presets.getPresetChargeWeight() > 0)
-          {
+          if (g_presets.getPresetChargeWeight() > 0) {
             setConfigPresetData();
             g_cur_line = g_prev_line;
             g_state.setState(g_state.pt_menu);
+            BLEWriteScreenChange(BLE_SCREEN_MENU);
           } else { return; }
           break;
       }      
@@ -466,6 +472,8 @@ void handleButton(int btn)
           g_cur_line = g_prev_line;
           g_state.setState(g_state.pt_menu);
           BLEWriteScreenChange(BLE_SCREEN_MENU);
+          g_powders.loadPowder(g_presets.getPowderIndex());
+          BLEWritePowderDataAt(g_presets.getPowderIndex());
           break;
         case BTN_RIGHT:
           g_state.setState(g_state.pt_powders_edit);
@@ -474,22 +482,18 @@ void handleButton(int btn)
         case BTN_UP:
           if (g_powders.getCurrentPowder() == 0) { return; }
           g_powders.loadPowder(g_powders.getCurrentPowder()-1);
+          BLEWritePowderDataAt(g_powders.getCurrentPowder());
           g_cur_line = 0;
           break;
         case BTN_DOWN:
           if (g_powders.getCurrentPowder() == MAX_POWDERS) { return; }
           g_powders.loadPowder(g_powders.getCurrentPowder()+1);
+          BLEWritePowderDataAt(g_powders.getCurrentPowder());
           g_cur_line = 0;
           break;
         case BTN_OK:
-          if (g_powders.getPowderFactor() > 0)
-          {
-            DEBUGLN(F("TODO: Anything?  OK in powders menu."));
-          }
-          else
-          {
-            return;
-          }
+          if (g_powders.getPowderFactor() > 0) { DEBUGLN(F("TODO: Anything?  OK in powders menu.")); }
+          else { return; }
           break;
       }      
       break;

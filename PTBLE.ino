@@ -466,7 +466,10 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
       if ((index >= 0) || (index < MAX_PRESETS)) {
         BLEWritePresetDataAt(index);
         g_presets.loadPreset(index);
-        if (g_presets.isDefined()) { setConfigPresetData(); }
+        if (g_presets.isDefined()) { 
+          setConfigPresetData(); 
+          BLEWritePowderDataAt(g_presets.getPowderIndex());  //TESTING FIX
+        }
         if (g_state.getState() == g_state.pt_presets) {
           g_display_changed = true;
           displayUpdate(true);
@@ -499,8 +502,12 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
     case BLE_COMMAND_REQ_POWDER_BY_INDEX:
       DEBUGLN(F("BLE Command: Request Powder by index."));
       if ((index >= 0) || (index < MAX_POWDERS)) {
-        BLEWritePowderDataAt(index);
         g_powders.loadPowder(index);
+        BLEWritePowderDataAt(index);
+        if (g_state.getState() == g_state.pt_powders) {
+          g_display_changed = true;
+          displayUpdate(true);
+        }
       } else { logError("Powder index out of range", __FILE__, __LINE__); }
       break;
 

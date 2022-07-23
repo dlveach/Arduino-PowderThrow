@@ -1,78 +1,47 @@
-/*
- * PTPowders.cpp - PowderThrow powders implementation.
+/* PTPowders.cpp - PowderThrow powders implementation.
  * Created by David Veach.  2022
- * Private repository
- */
+ * Private repository. */
 #include "Arduino.h"
 #include "PTPowders.h"
 #include "PTUtility.h"
 
-/*
- * Constructor
- */
-PowderManager::PowderManager() 
-{
+PowderManager::PowderManager() {
   //TODO: anything?
 }
 
-/*
- * Initialize the config object.  
+/* Initialize the config object.  
  * Connects to FRAM, loads powder idx (def=00) from storage.
  * Returns true if successful, false if not.
- * Will set a system error.
- */
-bool PowderManager::init(Adafruit_FRAM_I2C fram, int powder)
-{
+ * Will set a system error. */
+bool PowderManager::init(Adafruit_FRAM_I2C fram, int powder){
   _fram = fram;
   if (powder < 0) { powder = 0; }
   return (loadPowder(powder));
 }
 
-/*
- * Return state of current powder.
- * True if powder defined, false if not.
- */
- bool PowderManager::isPowderDefined()
- {
-  return (_powder_buffer._powder_data.powder_factor > 0);
- }
+/* Return state of current powder.  True if powder defined, false if not. */
+ bool PowderManager::isPowderDefined() { return (_powder_buffer._powder_data.powder_factor > 0); }
  
-/*
- * Return index of current powder in manager.
- */
-int PowderManager::getCurrentPowder()
-{
-  return (_cur_powder);  
-}
+/* Return index of current powder in manager.*/
+int PowderManager::getCurrentPowder() { return (_cur_powder); }
 
-/*
- * Return config version.
- */
-int PowderManager::getPowderVersion()
-{
-  return (_powder_buffer._powder_data.powder_version);
-}
+/* Return config version. */
+int PowderManager::getPowderVersion() { return (_powder_buffer._powder_data.powder_version); }
 
-/*
- * Copy current loaded buffer's powder name into buff.
+/* Copy current loaded buffer's powder name into buff.
  * ERROR and return false if length of powder name too long.
- * TODO: change to just return pointer to char array.
- */
+ * TODO: change to just return pointer to char array. */
 bool PowderManager::getPowderName(char* buff){
   //TODO: does this need a safety check?. 
   strcpy(buff, _powder_buffer._powder_data.powder_name);
   return (true);
 }
 
-/*
- * Copy NAME_LEN chars from buff to loaded buffer's name.
- * ERROR and return false if length of buff too long.
- */
+/* Copy NAME_LEN chars from buff to loaded buffer's name.
+ * ERROR and return false if length of buff too long. */
 bool PowderManager::setPowderName(char* buff) {
   if (strlen(buff) > NAME_LEN) {
-    DEBUGP(F("ERROR: string too long. "));
-    DEBUGLN(__LINE__);
-    util_handleSystemError("ERR: str too long");
+    logError(F("String too long."), __FILE__, __LINE__, true);
     return (false);
   }
   strcpy(_powder_buffer._powder_data.powder_name, buff);
@@ -80,47 +49,38 @@ bool PowderManager::setPowderName(char* buff) {
   return (true);  
 }
 
-  bool PowderManager::getPowderLot(char* buff) {
-    //TODO: does this need a safety check?. 
-    strcpy(buff, _powder_buffer._powder_data.powder_lot);
-    return (true);
-  }
-  
-  bool PowderManager::setPowderLot(char* buff) {
-    if (strlen(buff) > NAME_LEN) {
-      DEBUGP(F("ERROR: string too long. "));
-      DEBUGLN(__LINE__);
-      util_handleSystemError("ERR: str too long");
-      return (false);
-    }
-    strcpy(_powder_buffer._powder_data.powder_lot, buff);
-    _dirty = true;
-    return (true);  
-  }
+/* */
+bool PowderManager::getPowderLot(char* buff) {
+  //TODO: does this need a safety check?. 
+  strcpy(buff, _powder_buffer._powder_data.powder_lot);
+  return (true);
+}
 
-/*
- * Return Powder Factor value for current powder.
- */
-float PowderManager::getPowderFactor()
-{
+/* */
+bool PowderManager::setPowderLot(char* buff) {
+  if (strlen(buff) > NAME_LEN) {
+    logError(F("String too long."), __FILE__, __LINE__, true);
+    return (false);
+  }
+  strcpy(_powder_buffer._powder_data.powder_lot, buff);
+  _dirty = true;
+  return (true);  
+}
+
+/* Return Powder Factor value for current powder. */
+float PowderManager::getPowderFactor() {
   return (_powder_buffer._powder_data.powder_factor);
 }
 
-/*
- * Set powder factor in current powder.
- */
-void PowderManager::setPowderFactor(float value)
-{
+/* Set powder factor in current powder. */
+void PowderManager::setPowderFactor(float value) {
   _powder_buffer._powder_data.powder_factor = value;
   _dirty = true;
 }
 
-/*
- * Increment powder name character at index i. 
- * Limited to A-Z, 0-9 and space
- */
-void PowderManager::incNameChar(int i)
-{
+/* Increment powder name character at index i. 
+ * Limited to A-Z, 0-9 and space. */
+void PowderManager::incNameChar(int i) {
   char c = _powder_buffer._powder_data.powder_name[i];
   if ((c < ' ') || (c > 'Z')) { c = 'A'; }
   else if (c == 'Z') { c = ' '; }
@@ -131,12 +91,9 @@ void PowderManager::incNameChar(int i)
   _dirty = true;
 }
 
-/*
- * Decrement powder name character at index i.
- * Limited to A-Z, 0-9 and space
- */
-void PowderManager::decNameChar(int i)
-{
+/* Decrement powder name character at index i.
+ * Limited to A-Z, 0-9 and space */
+void PowderManager::decNameChar(int i) {
   char c = _powder_buffer._powder_data.powder_name[i];
   if ((c < ' ') || (c > 'Z')) { c = 'A'; }
   else if (c == ' ') { c = 'Z'; }
@@ -147,11 +104,10 @@ void PowderManager::decNameChar(int i)
   _dirty = true;
 }
 
-void PowderManager::incPowderFactor(int pos)
-{
+/* */
+void PowderManager::incPowderFactor(int pos) {
   float val = _powder_buffer._powder_data.powder_factor;
-  switch (pos)
-  {
+  switch (pos) {
     case 12:
       if (val+0.1 < MAX_POWDER_FACTOR) {  val = val + 0.1; }
       break;
@@ -177,17 +133,16 @@ void PowderManager::incPowderFactor(int pos)
       if (val+0.00000001 < MAX_POWDER_FACTOR) {  val = val + 0.00000001; }
       break;
     default:
-      DEBUGLN(F("Invalid cursor pos for incPowderFactor()"));
+      logError(F("Invalid cursor pos."), __FILE__, __LINE__);
       return;
   }
   setPowderFactor(val);
 }
 
-void PowderManager::decPowderFactor(int pos)
-{
+/* */
+void PowderManager::decPowderFactor(int pos) {
   float val = _powder_buffer._powder_data.powder_factor;
-  switch (pos)
-  {
+  switch (pos) {
     case 12:
       if (val > 0.10000000) {  val = val - 0.1; }
       break;
@@ -213,70 +168,55 @@ void PowderManager::decPowderFactor(int pos)
       if (val > 0.00000001) {  val = val - 0.00000001; }
       break;
     default:
-      DEBUGLN(F("Invalid cursor pos for incPowderFactor()"));
+      logError(F("Invalid cursor pos."), __FILE__, __LINE__);
       return;
   }
   setPowderFactor(val);  
 }
 
-/*
- * Return true if powder buffer data changed, false if not.
- */
-bool PowderManager::isDirty()
-{
-  return (_dirty);
-}
+/* Return true if powder buffer data changed, false if not. */
+bool PowderManager::isDirty() { return (_dirty); }
 
  /* BLE support function.  Load & return Powder data struct for use in BLE comm.
  *  NOTE: this has no affect on current powder buffer, uses an independent buffer 
- *  that should not be modified.  It is never saved.
- */
+ *  that should not be modified.  It is never saved. */
 bool PowderManager::getBLEDataStruct(byte buffer[], int index) {
   if ((index < 0) || (index > MAX_POWDERS)) {
-    DEBUGLN(F("ERROR: getBLEDataStruct(): Powder index out of range."));
-    Serial.println("ERROR: getBLEDataStruct(): Preset index out of range.");
+    logError(F("Powder index out of range."), __FILE__, __LINE__);
     return false;
   } else if (!_readPowderData(buffer, index))  {
-    DEBUGLN(F("loadPowder(): ERROR: could not read FRAM storage."));
-    Serial.println("loadPowder(): ERROR: could not read FRAM storage.");
+    logError(F("Could not read FRAM storage."), __FILE__, __LINE__);
     return false;
   }
   return (true);
 }
 
-/*
- *  Load the supplied buffer with powder defaults.
- */
+/*  Load the supplied buffer with powder defaults. */
 bool PowderManager::getDefaults(byte buffer[], int size) {
   if (size != POWDER_DATA_SIZE) {
-    Serial.println("ERROR: getDefaults(): buffer size != defaults size");
+    logError(F("Buffer size != defaults size."), __FILE__, __LINE__);
     return (false);
   }
   memcpy(buffer, _defaults.raw_data, POWDER_DATA_SIZE);
   return (true);
 }
 
-/*
- * Load the powder buffer from an indexed location in FRAM.
+/* Load the powder buffer from an indexed location in FRAM.
  * Param index: the powder index in the list (0 base). Default is _cur_powder.
  * If the powder data is out of sync, it is intialized to default and saved.
- * Returns true if successful, false if not.
- */ 
+ * Returns true if successful, false if not. */ 
 boolean PowderManager::loadPowder(int index) {
   if ((index < 0) || (index > MAX_POWDERS)) {
-    DEBUGLN(F("ERROR: loadPowder(): Powder index out of range."));
+    logError(F("Powder index out of range."), __FILE__, __LINE__);
     return (false); 
   }
   _cur_powder = index;
-  //DEBUGLN(F("loadPowder(): reading FRAM storage for powder."));
   if (!_readPowderData(_powder_buffer.raw_data, _cur_powder)) {
-    DEBUGLN(F("loadPowder(): ERROR: could not read FRAM storage."));
+    logError(F("Could not read FRAM storage."), __FILE__, __LINE__);
     return (false);
   } else {
     if (_powder_buffer._powder_data.powder_version != POWDERS_VERSION) {
-      DEBUGP(F("loadPowder(): Powder version "));
-      DEBUGP(_powder_buffer._powder_data.powder_version);
-      DEBUGLN(F(" out of sync, setting to defaults."));    
+      DEBUGLN(F("WARN: Powder version out of sync, setting to defaults."));    
       savePowder(true);
     }
   }
@@ -284,19 +224,15 @@ boolean PowderManager::loadPowder(int index) {
   return (true);
 }
 
-/*
- * Restore buffer to saved data for current powder index in list.
- */
+/* Restore buffer to saved data for current powder index in list. */
 boolean PowderManager::resetBuffer() {
   if (_dirty) { loadPowder(_cur_powder); }
 }
 
-/*
- * Save the current powder buffer to FRAM.
+/* Save the current powder buffer to FRAM.
  * If init is true, intialize the buffer to defaults before
  * saving.  Defaults to false.
- * Returns true if successful, false if not.
- */
+ * Returns true if successful, false if not. */
 boolean PowderManager::savePowder(boolean init) {
   if (init) {
     DEBUGLN(F("savePowder(): Initializing powder to defaults."));
@@ -305,8 +241,6 @@ boolean PowderManager::savePowder(boolean init) {
     _dirty = true;
   }
   if (!_dirty) { return (true); }  //nothing to save
-  //sprintf(_error_buff, "savePowder(): Saving powder %02d to FRAM storage.", _cur_powder);
-  //DEBUGLN(_error_buff);
   if (_writePowderData(_cur_powder)) {
     _dirty = false;
     return (true);
@@ -314,16 +248,12 @@ boolean PowderManager::savePowder(boolean init) {
   return (false);
 }
 
-/*
- * Writes the current powder buffer to FRAM.
+/* Writes the current powder buffer to FRAM.
  * FRAM location determined from current powder index.
- * Returns true if successful, false if not.
- */
-boolean PowderManager::_writePowderData(int index)
-{
+ * Returns true if successful, false if not. */
+boolean PowderManager::_writePowderData(int index) {
   uint16_t addr = POWDERS_ADDR_BASE + index * POWDER_DATA_SIZE;
-  if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE)
-  {
+  if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE) {
     DEBUGLN(F("FATAL: _writePowderData(): FRAM storage address overflow."));
     return (false);
   }
@@ -332,31 +262,22 @@ boolean PowderManager::_writePowderData(int index)
     _fram.write8(addr + i, _powder_buffer.raw_data[i]);
     idx = i;
   }
-  //sprintf(_error_buff, "Starting at addr %d, wrote %d bytes to FRAM",addr, idx);
-  //DEBUGLN(_error_buff);
   return (true); 
 }
 
-/*
- * Reads the FRAM into the supplied buffer.
+/* Reads the FRAM into the supplied buffer.
  * FRAM location determined from the supplied powder index.
- * Returns true if successful, false if not.
- */
-boolean PowderManager::_readPowderData(byte buffer[], int index)
-{
+ * Returns true if successful, false if not. */
+boolean PowderManager::_readPowderData(byte buffer[], int index) {
   uint16_t addr = POWDERS_ADDR_BASE + index * POWDER_DATA_SIZE;
-  if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE) 
-  {
+  if ((addr + POWDER_DATA_SIZE-1) > FRAM_SIZE)  {
     DEBUGLN(F("FATAL: _readPowderData(): FRAM storage address overflow."));
     return (false);
   }
   int idx;
-  for (int i=0; i<POWDER_DATA_SIZE; i++) 
-  {
+  for (int i=0; i<POWDER_DATA_SIZE; i++)  {
     buffer[i] = _fram.read8(addr + i);
     idx = i;
   }
-  //sprintf(_error_buff, "Starting at addr %d, read %d bytes from FRAM",addr, idx);
-  //DEBUGLN(_error_buff);  
   return (true);
 }

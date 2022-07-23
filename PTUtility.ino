@@ -1,24 +1,26 @@
 
 /*
  * Circular increment an alpha-numeric character.
- * Supports ' ', 'A-Z', '0-9'
+ * Supports ' ', 'A-Z', 'a-z', '0-9'
  */
 char incChar(char c) {
-  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
-  else if (c == 'Z') { c = ' '; }
+  if ((c < ' ') || (c > 'z')) { c = ' '; }
+  else if (c == 'z') { c = ' '; }
   else if (c == ' ') { c = '0'; }
   else if (c == '9') { c = 'A'; }
+  else if (c == 'Z') { c = 'a'; }
   else { c++; }
   return c;
 }
 
 /*
  * Circular decrement an alpha-numeric character.
- * Supports ' ', 'A-Z', '0-9'
+ * Supports ' ', 'A-Z', 'a-z', '0-9'
  */
 char decChar(char c) {
-  if ((c < ' ') || (c > 'Z')) { c = 'A'; }
-  else if (c == ' ') { c = 'Z'; }
+  if ((c < ' ') || (c > 'z')) { c = ' '; }
+  else if (c == ' ') { c = 'z'; }
+  else if (c == 'a') { c = 'Z'; }
   else if (c == 'A') { c = '9'; }
   else if (c == '0') { c = ' '; }
   else { c--; }

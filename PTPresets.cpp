@@ -287,12 +287,10 @@ bool PresetManager::isDirty() {
  */
 bool PresetManager::getBLEDataStruct(byte buffer[], int index) {
   if ((index < 0) || (index > MAX_PRESETS)) {
-    DEBUGLN(F("ERROR: loadPreset(): Preset index out of range."));
-    Serial.println("ERROR: loadPreset(): Preset index out of range.");
+    logError(F("Preset index out of range."), __FILE__, __LINE__);
     return false;
   } else if (!_readPresetData(buffer, index))  {
-    DEBUGLN(F("loadPreset(): ERROR: could not read FRAM storage."));
-    Serial.println("loadPreset(): ERROR: could not read FRAM storage.");
+    logError(F("Could not read FRAM storage."), __FILE__, __LINE__);
     return false;
   }
   return (true);
@@ -303,7 +301,7 @@ bool PresetManager::getBLEDataStruct(byte buffer[], int index) {
  */
 bool PresetManager::getDefaults(byte buffer[], int size) {
   if (size != PRESET_DATA_SIZE) {
-    Serial.println("ERROR: getDefaults(): preset buffer size != defaults size");
+    logError(F("Preset buffer size != defaults size."), __FILE__, __LINE__);
     return (false);
   }
   memcpy(buffer, _defaults.raw_data, PRESET_DATA_SIZE);
