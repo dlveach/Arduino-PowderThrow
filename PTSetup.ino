@@ -169,6 +169,7 @@ void setup() {
   g_TIC_thrower.setTargetVelocity(0);
   g_TIC_trickler.exitSafeStart();
   g_TIC_thrower.exitSafeStart();
+  if (g_TIC_trickler.getEnergized()) { g_TIC_trickler.deenergize(); } // disable trickler TIC until run
   DEBUGLN(F("TIC I2C drivers enabled"));
   g_lcd.setCursor(0,2);
   g_lcd.print(F("Step Drvrs enbld ..."));
