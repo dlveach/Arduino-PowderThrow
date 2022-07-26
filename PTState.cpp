@@ -30,21 +30,15 @@ void PTState::setState(state_t state)
   _state = state;
 }
 
-/*
- * Set current system message
- */
-void PTState::setSystemMessage(String msg)
-{
-  _system_message = msg;
-}
+/* Set current system error messages */
+void PTState::setSystemMessage(String msg) { _system_message = msg; }
+void PTState::setSystemFileName(String file_name) { _system_file_name = file_name; }
+void PTState::setSystemLineNo(String line_no) { _system_line_no = line_no; }
 
-/*
- * Get current system message
- */
- String PTState::getSystemMessage()
- {
-  return _system_message;
- }
+/* Get current system error messages */
+ String PTState::getSystemMessage() { return _system_message; }
+ String PTState::getSystemFileName() { return _system_file_name; }
+ String PTState::getSystemLineNo() { return _system_line_no; }
 
 /*
  * Return display friendly state name

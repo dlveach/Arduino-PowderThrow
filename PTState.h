@@ -54,8 +54,12 @@ class PTState {
     int getState();
     const char* getStateName();
     const char* getStateLongName();
-    void setSystemMessage(String msg);
+    void setSystemMessage(String);
     String getSystemMessage();
+    void setSystemFileName(String);
+    String getSystemFileName();
+    void setSystemLineNo(String);
+    String getSystemLineNo();
     void BtnOK();
     void BtnUp();
     void BtnDown();
@@ -66,6 +70,8 @@ class PTState {
   private:
     state_t _state;
     String _system_message;
+    String _system_file_name;
+    String _system_line_no;
 };
 
 #endif  // PTState_h

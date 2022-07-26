@@ -370,17 +370,22 @@ void pad(char* buff)
  * Hidden system function menu
  * TODO: am I using this?
  */
+/* 
 void hiddenMenu()
 {
   DEBUGLN(F("TODO: Hidden Menu"));
 }
- 
-void displaySystemError()
-{
+*/
+
+void displaySystemError() {
   g_lcd.clear();
   g_lcd.setCursor(0,0);
   g_lcd.print("FATAL SYSTEM ERROR!");
   g_lcd.setCursor(0,1);
   g_lcd.print(g_state.getSystemMessage());
+  g_lcd.setCursor(0,2);
+  g_lcd.print(g_state.getSystemFileName());
+  g_lcd.setCursor(0,3);
+  g_lcd.print(g_state.getSystemLineNo());
   while (1) { delay(1); }  //Halt system
 }

@@ -89,13 +89,14 @@ void runSystem() {
       g_LED_Yel_2.setOff();
       g_LED_Grn.setOff();
       g_LED_Red.setOff();
+      if (g_TIC_trickler.getEnergized()) { g_TIC_trickler.deenergize(); } // disable trickler TIC
       return;  
   }
 
   //TODO: put user resp dialogs in the next two checks and kick out to menu !!!
-  
+
   if (!g_scale.isConnected()) { 
-    DEBUGLN(F("Scale not connected while in running state, stop all."));
+    logError(F("Scale not connected while in running state, stop all."), __FILE__, __LINE__);
     //TODO: set a state?  
     //TODO: Should we really stop all in all states?
     stopAll();
@@ -106,7 +107,7 @@ void runSystem() {
 
   if (!isSystemCalibrated()) {
     //TODO: best way to handle this?
-    DEBUGLN(F("System not calibrated while running"));
+    logError(F("System not calibrated while running"), __FILE__, __LINE__);
     stopAll();
     g_state.setState(PTState::pt_ready);  // TODO: should we kick out to the menu?
     g_display_changed = true; 
@@ -119,21 +120,26 @@ void runSystem() {
   if (scale_cond == PTScale::undef) {
     // TODO: Should just be a transient.  Need more testing to confirm.
     // for now just log and return to run loop.
-    DEBUGLN(F("RunSystem(); Scale not ready. Condition == undef"));
+    logError(F("RunSystem(); Scale not ready. Condition == undef"), __FILE__, __LINE__);
     //delay(1000);  //DEBUGGING
     g_display_changed = true; 
     displayUpdate();
     return; 
   } 
 
-  //TODO: better way to handle this?  Set a system error code/state?
-  //TODO: has this ever happened?  More testing to evaluate.
+  // Enable the trickler stepper controller if not enabled.
+  if (!g_TIC_trickler.getEnergized()) { 
+    g_TIC_trickler.energize(); 
+    while (!g_TIC_trickler.getEnergized());
+  } 
+
+  // Confirm stepper controller states
   if (g_TIC_thrower.getOperationState() != TicOperationState::Normal) {
-    DEBUGLN(F("Thrower TIC is not in operational state."));
+    logError(F("Thrower not operational."), __FILE__, __LINE__, true);
     return;
   }
   if (g_TIC_trickler.getOperationState() != TicOperationState::Normal) {
-    DEBUGLN(F("Trickler TIC is not in operational state."));
+    logError(F("Trickler not operational."), __FILE__, __LINE__, true);
     return;
   }  
 
@@ -283,15 +289,13 @@ void runSystem() {
         g_state.setState(PTState::pt_paused);
         _pause_time = run_time; //start pause timer 
       } else if ((scale_cond == PTScale::close_to_tgt) || (scale_cond == PTScale::under_tgt)) {
-        //Unlikely but could happen?
-        DEBUGLN(F("Bumping but below bump threshold. Resume trickling."));
+        DEBUGLN(F("Bumping but below bump threshold. Resume trickling."));  //Unlikely but could happen?
         g_state.setState(PTState::pt_trickling); 
         setTricklerSpeed(true);
       } else if (scale_cond != PTScale::very_close_to_tgt) {
         sprintf(g_msg, "Bumping and unexpected scale condition %s", ConditionNames[scale_cond]);
         logError(g_msg, __FILE__, __LINE__);
-        //TODO: should we really exit here and lock?
-        g_state.setState(PTState::pt_locked);
+        g_state.setState(PTState::pt_locked);  //TODO: should we really exit here and lock?
         _lock_time = run_time;
       } else {
         bumpTrickler();
@@ -413,6 +417,8 @@ void updateLEDs() {
 /*  Run the trickler  */
 void startTrickler() {
   DEBUGLN(F("Starting the trickler."));
+  if (!g_TIC_trickler.getEnergized()) { g_TIC_trickler.energize(); }
+  while (!g_TIC_trickler.getEnergized());
   if (g_TIC_trickler.getCurrentVelocity() != 0) {
     g_TIC_trickler.setTargetVelocity(0);
     while (g_TIC_trickler.getCurrentVelocity() != 0);
@@ -455,6 +461,10 @@ void setTricklerSpeed(bool force) {
     //Shouldn't happen but just be sure not to slow beyond limit 
     new_speed = limit; 
   }
+  if (!g_TIC_trickler.getEnergized()) { 
+    g_TIC_trickler.energize(); 
+    while (!g_TIC_trickler.getEnergized());
+  }
   g_TIC_trickler.setTargetVelocity(new_speed * TIC_PULSE_MULTIPLIER);  
 }
 
@@ -464,6 +474,10 @@ void bumpTrickler() {
   if (_last_bump == 0) { _last_bump = millis(); } //init first time
   if ((millis() - _last_bump) > BUMP_INTERVAL) {
     _last_bump = millis();
+    if (!g_TIC_trickler.getEnergized()) { 
+      g_TIC_trickler.energize(); 
+      while (!g_TIC_trickler.getEnergized());
+    }
     int pos = g_TIC_trickler.getCurrentPosition();
     g_TIC_trickler.setTargetPosition(pos + BUMP_DISTANCE);
   }
@@ -549,18 +563,25 @@ void manualThrow() {
   _lock = false;
 }
 
-/*  Manual trickle toggle run/stop  */
+/*  Manual trickle toggle run/stop.  Called recursively to stop.  */
 void toggleTrickler() {
   static bool _running = false;
   if (_running) {
     DEBUGLN(F("Manual: Stop trickler."));
-    g_TIC_trickler.setTargetVelocity(0);
     _running = false;
   } else {
-    DEBUGP(F("Manual: Start trickler with speed "));
-    DEBUGLN(g_config.getTricklerSpeed());
-    g_TIC_trickler.setTargetVelocity(g_config.getTricklerSpeed() * TIC_PULSE_MULTIPLIER);
+    DEBUGLN(F("Manual: Start trickler."));
+    startTrickler();
     _running = true;
+    //TODO: manual trickler running state & display?  
+    while (_running) {
+      checkButtons();
+      checkBLE();
+      updateLEDs();
+    }
+    g_TIC_trickler.setTargetVelocity(0);
+    while (g_TIC_trickler.getCurrentVelocity() != 0);
+    g_TIC_trickler.deenergize();
   }
 }
 
@@ -674,8 +695,7 @@ void calibrateTrickler() {
   g_lcd.print("Avg gn/s:");
 
   // Start the test
-
-  g_TIC_trickler.setTargetVelocity(test_speed * TIC_PULSE_MULTIPLIER);
+  startTrickler();
   last_check = millis();
   while (((millis() - last_check) < 2000) && _running) {
     checkButtons();
@@ -757,6 +777,8 @@ void calibrateTrickler() {
 
   // Calibration is over
   g_TIC_trickler.setTargetVelocity(0);
+  while (g_TIC_trickler.getCurrentVelocity() > 0);
+  g_TIC_trickler.deenergize(); 
   g_lcd.clear();
   g_lcd.setCursor(0,0);
   g_lcd.print("Calibrate Trickler:");

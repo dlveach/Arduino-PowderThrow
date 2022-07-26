@@ -85,14 +85,27 @@ void util_eraseFRAM(Adafruit_FRAM_I2C _fram) {
   DEBUGLN(F("FRAM zeroed out."));
 }
 
-//TODO: filename and line no in displaySystemError
-void logError(String errMsg, String fileName, int lineNo, bool fatal) {
+void logError(String err_msg, String file_name, int line_no, bool fatal) {
   // Using Strings here ok, probably fatal anyway.
-  String msg = "ERROR: " + errMsg;
-  if (fileName != "") { msg = msg + ": " + fileName; }
-  if (lineNo > 0) { msg = msg + " at " + String(lineNo); }
-  DEBUGLN(msg);
-  if (fatal) { displaySystemError(); }
+  String msg = "ERROR: " + err_msg;
+  if (file_name != "") {
+    file_name = file_name.substring(file_name.lastIndexOf('/')+1); 
+  }
+  if (file_name != "") { msg = msg + ": " + file_name; }
+  if (line_no > 0) { msg = msg + " at " + String(line_no); }
+  if (fatal) {
+    Serial.println(msg);
+  } else {
+    DEBUGLN(msg);
+  }
+  if (fatal) { 
+    g_state.setState(PTState::pt_error);
+    msg = err_msg.substring(0,19);
+    g_state.setSystemMessage(msg);
+    if (file_name != "") { g_state.setSystemFileName(file_name); } else { g_state.setSystemFileName(""); }
+    if (line_no > 0) { g_state.setSystemLineNo(String(line_no)); } else { g_state.setSystemLineNo(""); }
+    displaySystemError(); 
+  }
 }
 
 /*** Handle System Error. ***/
