@@ -365,13 +365,19 @@ void parameterCommandCharWritten(BLEDevice central, BLECharacteristic characteri
   switch (byte(characteristic.value()[0])) {
 
     case BLE_COMMAND_MANUAL_THROW:
-      Serial.println("BLE Command: Manual Throw");
-      Serial.println("TODO: impliment");
+      DEBUGLN(F("BLE Command: Manual Throw"));
+      if (g_scale.getMode() == PTScale::pan_off) {
+        DEBUGLN(F("Pan is not on scale, cannot throw."));
+      } else if (g_state.getState() == PTState::pt_man_throw) { 
+        DEBUGLN(F("Already throwing, ignore."));
+      } else {  
+        manualThrow();
+      }
       break;
 
     case BLE_COMMAND_MANUAL_TRICKLE:
-      Serial.println("BLE Command: Manual Trickle");
-      Serial.println("TODO: impliment");
+      DEBUGLN(F("BLE Command: Manual Trickle"));
+      toggleTrickler();
       break;
 
     case BLE_COMMAND_CALIBRATE_TRICKLER_START:

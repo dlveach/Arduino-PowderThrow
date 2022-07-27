@@ -20,7 +20,7 @@
 #include "PTLed.h"
 
 #define VERSION F("2.0")
-#define BUILD   F("108")
+#define BUILD   F("109")
 
 //HARDWARE
 #define LCD_I2C_ADDR 0x27     // PCF8574 I2C 20x4 LCD shield (SunFounder)

@@ -523,7 +523,15 @@ void manualThrow() {
     logError("Thrower not in operational state.", __FILE__, __LINE__);
     return;
   }
-  if (_lock) { return; } else { _lock = true; }  //only allow one call at a time
+  //only allow one call at a time TODO: this is not working!  Using state instead.
+  if (_lock) { 
+    return; 
+  } else { 
+    _lock = true; 
+  }  
+
+  int old_state = g_state.getState();
+  g_state.setState(PTState::pt_man_throw);
   
   bool throwing = true;
   int thrower_state = 0;
@@ -531,6 +539,7 @@ void manualThrow() {
   while (throwing) {
     if ((millis() - timeout) >= 10000) { //timeout after 10 seconds, for safety
       logError("Manual throw timeed out", __FILE__, __LINE__);
+      throwing = false;
       break;
     }
     switch (thrower_state) {
@@ -559,8 +568,12 @@ void manualThrow() {
         throwing = false;
         break;  
     }
+    checkButtons();
+    checkBLE();
   }
   _lock = false;
+  g_state.setState(PTState::state_t(old_state));
+  Serial.println(g_state.getStateName());
 }
 
 /*  Manual trickle toggle run/stop.  Called recursively to stop.  */

@@ -118,7 +118,16 @@ void handleButton(int btn)
               switch (g_cur_line)
               {
                 case 0:
-                  manualThrow();
+                  g_scale.checkScale();
+                  if (g_scale.getMode() == PTScale::pan_off) {
+                    DEBUGLN(F("Pan is not on scale, cannot throw."));
+                  } else if (g_scale.getMode() == PTScale::undef) {
+                    logError(F("Scale mode Undefined."), __FILE__, __LINE__);
+                  } else if (g_state.getState() == PTState::pt_man_throw) { 
+                    DEBUGLN(F("Already throwing, ignore."));
+                  } else {  
+                    manualThrow();
+                  }
                   break;
                 case 1:
                   toggleTrickler();
